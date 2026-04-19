@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { useDhiSplashViewModel } from '../viewmodel/useDhiSplashViewModel'
 import { SplashViewOverride } from './SplashViewOverride'
 import { volatileSessionStore } from 'prana/ui/authentication/state/volatileSessionStore'
-import { getFirstEnabledMainRoute } from 'prana/ui/constants/moduleRegistry'
 
 export const SplashContainerOverride: FC = () => {
   const navigate = useNavigate()
@@ -16,7 +15,7 @@ export const SplashContainerOverride: FC = () => {
       return
     }
 
-    navigate(getFirstEnabledMainRoute())
+    navigate('/apps')
   }
 
   const handleSshFailure = () => {

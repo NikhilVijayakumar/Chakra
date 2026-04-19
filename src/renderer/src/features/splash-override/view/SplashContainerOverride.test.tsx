@@ -3,10 +3,9 @@ import React from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, waitFor } from '@testing-library/react'
 
-const { navigateMock, hasSessionMock, getFirstEnabledMainRouteMock } = vi.hoisted(() => ({
+const { navigateMock, hasSessionMock } = vi.hoisted(() => ({
   navigateMock: vi.fn(),
-  hasSessionMock: vi.fn(),
-  getFirstEnabledMainRouteMock: vi.fn()
+  hasSessionMock: vi.fn()
 }))
 
 vi.mock('react-router-dom', () => ({
@@ -17,10 +16,6 @@ vi.mock('prana/ui/authentication/state/volatileSessionStore', () => ({
   volatileSessionStore: {
     hasSession: hasSessionMock
   }
-}))
-
-vi.mock('prana/ui/constants/moduleRegistry', () => ({
-  getFirstEnabledMainRoute: getFirstEnabledMainRouteMock
 }))
 
 vi.mock('../viewmodel/useDhiSplashViewModel', () => ({
@@ -49,8 +44,6 @@ describe('SplashContainerOverride', () => {
     cleanup()
     navigateMock.mockReset()
     hasSessionMock.mockReset()
-    getFirstEnabledMainRouteMock.mockReset()
-    getFirstEnabledMainRouteMock.mockReturnValue('/dashboard')
   })
 
   afterEach(() => {
@@ -73,9 +66,7 @@ describe('SplashContainerOverride', () => {
     render(<SplashContainerOverride />)
 
     await waitFor(() => {
-      expect(getFirstEnabledMainRouteMock).toHaveBeenCalled()
+      expect(navigateMock).toHaveBeenCalledWith('/apps')
     })
-
-    expect(navigateMock).toHaveBeenCalledWith('/dashboard')
   })
 })
