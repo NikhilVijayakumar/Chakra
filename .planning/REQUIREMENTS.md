@@ -30,6 +30,15 @@
 - [ ] **CACHE-02**: Entire effective env snapshot is cached to chakra-app/cache for this milestone.
 - [ ] **CACHE-03**: Cache initialization is deterministic across dev runs and does not crash when cache folders are missing.
 
+### Startup and Post-Login Cleanup Pivot
+
+- [ ] **CLEAN-01**: Successful login routes directly to a Chakra app listing/install placeholder and onboarding route flow is removed from default startup.
+- [ ] **CLEAN-02**: Splash flow preserves SSH verification gating before entering post-login route.
+- [ ] **CLEAN-03**: Effective startup env is cached fully, and runtime reads use SQLite-backed cache after bootstrap.
+- [ ] **CLEAN-04**: Only Prana initialization required for runtime correctness remains in startup path.
+- [ ] **CLEAN-05**: DHI-facing naming in startup/auth and touched package metadata is replaced with Chakra identity.
+- [ ] **CLEAN-06**: Dharma dependency and runtime references are removed from the app.
+
 ## Future Requirements
 
 ### Security Hardening
@@ -67,10 +76,16 @@
 | CACHE-01 | Phase 6 | Pending |
 | CACHE-02 | Phase 6 | Pending |
 | CACHE-03 | Phase 6 | Pending |
+| CLEAN-01 | Phase 7 | Pending |
+| CLEAN-02 | Phase 7 | Pending |
+| CLEAN-03 | Phase 7 | Pending |
+| CLEAN-04 | Phase 7 | Pending |
+| CLEAN-05 | Phase 7 | Pending |
+| CLEAN-06 | Phase 7 | Pending |
 
 **Coverage:**
-- v1 requirements: 13 total
-- Mapped to phases: 13
+- v1 requirements: 19 total
+- Mapped to phases: 19
 - Unmapped: 0
 
 ---

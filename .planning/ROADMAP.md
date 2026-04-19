@@ -5,8 +5,8 @@
 - **Milestone:** v0.2
 - **Started:** 2026-04-19
 - **Completed:** —
-- **Requirements:** 13
-- **Phase count:** 4
+- **Requirements:** 19
+- **Phase count:** 5
 - **Status:** In Progress
 
 ---
@@ -62,6 +62,17 @@
 2. Missing cache directories are auto-created without startup failure.
 3. Effective env snapshot is written/read from cache for this milestone's baseline.
 
+### Phase 7: now this work do a clean up our aprt from splash auth and postlogin screen remove all postlogin is our app listing and install page for now keep a place holder now in splash we need ssh verification  nad env to cache flow rest is not needed now prana initlization or something which is required by parano to work then donot remove that next app is not dhi it is chakra so update that  update in src package as well and dharma is not needed in this app you can remove from git and all refence to that can also removed
+
+**Goal:** Deliver a Chakra-only post-login skeleton by removing onboarding/Dharma carryover while preserving splash SSH verification, env caching, and required Prana initialization.
+**Requirements**: CLEAN-01, CLEAN-02, CLEAN-03, CLEAN-04, CLEAN-05, CLEAN-06
+**Depends on:** Phase 6
+**Plans:** 2 plans
+
+Plans:
+- [ ] 07-01-PLAN.md — Core startup cleanup: DHI to Chakra naming, env/cache contract hardening, and Dharma removal in main/preload/package surfaces.
+- [ ] 07-02-PLAN.md — Renderer route cleanup: remove onboarding path, force post-login listing placeholder, and align regression coverage.
+
 ---
 
 ## Phase Summary
@@ -72,3 +83,4 @@
 | 4 | Electron Bootstrap Cleanup | Remove legacy DHI-first startup coupling | BOOT-01, BOOT-02, BOOT-03 | 3 |
 | 5 | Env-Driven Runtime Inputs | Normalize env-backed auth/runtime config | ENV-01, ENV-02, ENV-03 | 3 |
 | 6 | Cache Path and Env Snapshot | Use chakra-app/cache and persist env snapshot baseline | CACHE-01, CACHE-02, CACHE-03 | 3 |
+| 7 | now this work do a clean up our aprt from splash auth and postlogin screen remove all postlogin is our app listing and install page for now keep a place holder now in splash we need ssh verification  nad env to cache flow rest is not needed now prana initlization or something which is required by parano to work then donot remove that next app is not dhi it is chakra so update that  update in src package as well and dharma is not needed in this app you can remove from git and all refence to that can also removed | Chakra-only startup/post-login cleanup with listing placeholder and no Dharma | CLEAN-01, CLEAN-02, CLEAN-03, CLEAN-04, CLEAN-05, CLEAN-06 | 5 |
