@@ -1,0 +1,7 @@
+{
+  "id": "hiring-sim",
+  "title": "Hiring Simulation",
+  "route": "/hiring-sim",
+  "enabled": true,
+  "ownership": "renderer-module"
+}

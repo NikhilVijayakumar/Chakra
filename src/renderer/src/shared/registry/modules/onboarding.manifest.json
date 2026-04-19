@@ -1,0 +1,7 @@
+{
+  "id": "onboarding",
+  "title": "Onboarding",
+  "route": "/onboarding",
+  "enabled": true,
+  "ownership": "renderer-module"
+}

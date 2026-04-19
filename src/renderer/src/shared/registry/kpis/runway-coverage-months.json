@@ -1,0 +1,9 @@
+{
+  "uid": "runway-coverage-months",
+  "name": "Runway Coverage",
+  "description": "Estimates how many months of operational runway remain under current spend dynamics.",
+  "unit": "months",
+  "target": "",
+  "value": "",
+  "goalMapping": "Ensures capital strategy remains sustainable relative to growth commitments."
+}

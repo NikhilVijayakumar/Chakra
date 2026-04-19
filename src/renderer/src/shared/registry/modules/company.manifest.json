@@ -1,0 +1,7 @@
+{
+  "id": "company",
+  "title": "Company",
+  "route": "/company",
+  "enabled": true,
+  "ownership": "renderer-module"
+}

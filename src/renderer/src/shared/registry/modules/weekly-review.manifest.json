@@ -1,0 +1,7 @@
+{
+  "id": "weekly-review",
+  "title": "Weekly Review",
+  "route": "/weekly-review",
+  "enabled": true,
+  "ownership": "renderer-module"
+}

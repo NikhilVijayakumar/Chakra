@@ -1,0 +1,43 @@
+export const enAuthTranslations: Record<string, string> = {
+  'auth.denied.backToLogin': 'Return to Login',
+  'auth.denied.body':
+    'Maximum failed SSH verification attempts have been reached. Contact your system administrator.',
+  'auth.denied.retry': 'Try Again',
+  'auth.denied.title': 'Access Denied',
+  'auth.email': 'Email Address',
+  'auth.error.emailMismatch': 'The provided email does not match the configured Director account.',
+  'auth.error.invalid': 'Invalid email or password.',
+  'auth.error.locked': 'Too many attempts. Access locked for 60 seconds.',
+  'auth.error.lockedExtended': 'Too many failed attempts. Access locked for 5 minutes.',
+  'auth.error.resetFailed': 'Failed to update password. Please try again.',
+  'auth.error.resetRequiresRecovery':
+    'Password reset link expired or missing. Please run Forgot Password again.',
+  'auth.error.sshFailed': 'SSH key verification failed. Access cannot be recovered.',
+  'auth.error.sshUnavailable': 'Unable to verify SSH access to governance repository.',
+  'auth.forgot.backToLogin': 'Back to login',
+  'auth.forgot.emailLabel': 'Registered Email',
+  'auth.forgot.proceedReset': 'Set New Password',
+  'auth.forgot.sshFailed': 'SSH verification failed.',
+  'auth.forgot.sshVerified': 'SSH identity confirmed.',
+  'auth.forgot.sshVerifying': 'Verifying SSH identity…',
+  'auth.forgot.submit': 'Verify via SSH',
+  'auth.forgot.subtitle':
+    'We will verify your identity via SSH key before issuing a temporary password.',
+  'auth.forgot.tempPasswordLabel': 'Temporary Password',
+  'auth.forgot.title': 'Identity Recovery',
+  'auth.login.forgotLink': 'Forgot password?',
+  'auth.login.submit': 'Authenticate',
+  'auth.login.subtitle': 'Sign in to your secure environment.',
+  'auth.login.title': 'Director Access',
+  'auth.password': 'Password',
+  'auth.reset.confirmPassword': 'Confirm Password',
+  'auth.reset.newPassword': 'New Password',
+  'auth.reset.strength.match': 'Passwords match',
+  'auth.reset.strength.minLength': 'At least 8 characters',
+  'auth.reset.strength.number': 'One number',
+  'auth.reset.strength.uppercase': 'One uppercase letter',
+  'auth.reset.submit': 'Update Password',
+  'auth.reset.subtitle':
+    'Your new password must be at least 8 characters and include one uppercase letter and one number.',
+  'auth.reset.title': 'Set New Password'
+}

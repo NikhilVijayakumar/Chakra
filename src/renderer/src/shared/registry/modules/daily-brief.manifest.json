@@ -1,0 +1,7 @@
+{
+  "id": "daily-brief",
+  "title": "Daily Brief",
+  "route": "/daily-brief",
+  "enabled": true,
+  "ownership": "renderer-module"
+}

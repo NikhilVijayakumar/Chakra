@@ -1,0 +1,8 @@
+{
+  "uid": "design-quality-review-log",
+  "name": "Design Quality Review Log",
+  "description": "Design audit findings, accessibility checks, and UX debt remediation records.",
+  "schemaType": "document",
+  "requiredFields": ["timestamp", "surface", "issue_type", "severity", "owner"],
+  "sampleSource": "design/reviews"
+}

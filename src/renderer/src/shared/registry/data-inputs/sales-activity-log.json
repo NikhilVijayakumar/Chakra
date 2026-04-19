@@ -1,0 +1,8 @@
+{
+  "uid": "sales-activity-log",
+  "name": "Sales Activity Log",
+  "description": "Raw CRM activity records covering outreach, qualification, meetings, and stage changes.",
+  "schemaType": "event-stream",
+  "requiredFields": ["timestamp", "account_id", "stage", "owner", "value"],
+  "sampleSource": "crm/events"
+}

@@ -1,0 +1,8 @@
+{
+  "uid": "work-order-routing-log",
+  "name": "Work Order Routing Log",
+  "description": "Command-routing records including request source, owner transitions, and resolution status.",
+  "schemaType": "event-stream",
+  "requiredFields": ["timestamp", "work_order_id", "from_agent", "to_agent", "state"],
+  "sampleSource": "operations/routing"
+}

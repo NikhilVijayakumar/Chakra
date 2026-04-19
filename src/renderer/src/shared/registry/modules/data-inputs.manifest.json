@@ -1,0 +1,7 @@
+{
+  "id": "data-inputs",
+  "title": "Data Inputs",
+  "route": "/data-inputs",
+  "enabled": true,
+  "ownership": "renderer-module"
+}

@@ -1,0 +1,7 @@
+{
+  "id": "governance",
+  "title": "Governance",
+  "route": "/governance",
+  "enabled": true,
+  "ownership": "renderer-module"
+}

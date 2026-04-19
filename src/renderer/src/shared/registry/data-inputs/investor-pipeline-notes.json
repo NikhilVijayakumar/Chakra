@@ -1,0 +1,8 @@
+{
+  "uid": "investor-pipeline-notes",
+  "name": "Investor Pipeline Notes",
+  "description": "Narrative and numeric records for outreach, diligence, follow-ups, and stage progression.",
+  "schemaType": "document",
+  "requiredFields": ["timestamp", "investor", "stage", "ask", "next_action"],
+  "sampleSource": "funding/pipeline"
+}

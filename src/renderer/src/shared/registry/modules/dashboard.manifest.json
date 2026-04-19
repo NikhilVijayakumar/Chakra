@@ -1,0 +1,7 @@
+{
+  "id": "dashboard",
+  "title": "Dashboard",
+  "route": null,
+  "enabled": true,
+  "ownership": "renderer-module"
+}

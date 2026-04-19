@@ -1,0 +1,9 @@
+{
+  "uid": "accessibility-conformance-rate",
+  "name": "Accessibility Conformance Rate",
+  "description": "Tracks UI conformance with agreed accessibility standards across active product surfaces.",
+  "unit": "%",
+  "target": "",
+  "value": "",
+  "goalMapping": "Ensures design quality and usability commitments are enforceable."
+}

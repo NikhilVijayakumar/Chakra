@@ -1,0 +1,8 @@
+{
+  "uid": "talent-pipeline-records",
+  "name": "Talent Pipeline Records",
+  "description": "Candidate funnel data, interview outcomes, offer decisions, and hiring cycle timestamps.",
+  "schemaType": "tabular",
+  "requiredFields": ["candidate_id", "role", "stage", "owner", "updated_at"],
+  "sampleSource": "hr/recruiting"
+}

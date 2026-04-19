@@ -1,0 +1,7 @@
+{
+  "id": "settings",
+  "title": "Settings",
+  "route": "/settings",
+  "enabled": true,
+  "ownership": "renderer-module"
+}

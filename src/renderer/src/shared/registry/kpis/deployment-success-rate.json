@@ -1,0 +1,9 @@
+{
+  "uid": "deployment-success-rate",
+  "name": "Deployment Success Rate",
+  "description": "Captures successful production releases without rollback or urgent hotfix intervention.",
+  "unit": "%",
+  "target": "",
+  "value": "",
+  "goalMapping": "Validates engineering reliability and delivery quality."
+}

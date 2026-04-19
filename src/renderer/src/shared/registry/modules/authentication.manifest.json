@@ -1,0 +1,7 @@
+{
+  "id": "authentication",
+  "title": "Authentication",
+  "route": "/login",
+  "enabled": true,
+  "ownership": "renderer-module"
+}

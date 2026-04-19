@@ -1,0 +1,37 @@
+{
+  "extends": "@electron-toolkit/tsconfig/tsconfig.web.json",
+  "include": [
+    "src/renderer/src/env.d.ts",
+    "src/renderer/src/**/*",
+    "src/renderer/src/**/*.tsx",
+    "src/preload/*.d.ts"
+  ],
+  "compilerOptions": {
+    "composite": true,
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "astra": [
+        "src/renderer/src/shared/astraCompat.ts"
+      ],
+      "@astra-package": [
+        "node_modules/astra"
+      ],
+      "@astra-package/*": [
+        "node_modules/astra/*"
+      ],
+      "@renderer/*": [
+        "src/renderer/src/*"
+      ],
+      "prana/ui/constants/pranaConfig": [
+        "src/renderer/src/shared/pranaConfigCompat.ts"
+      ],
+      "prana/*": [
+        "node_modules/prana/src/*"
+      ],
+      "dharma/*": [
+        "node_modules/dharma/src/*"
+      ]
+    }
+  }
+}

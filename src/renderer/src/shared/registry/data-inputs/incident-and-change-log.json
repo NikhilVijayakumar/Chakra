@@ -1,0 +1,8 @@
+{
+  "uid": "incident-and-change-log",
+  "name": "Incident and Change Log",
+  "description": "Operational records for incidents, change requests, deploy outcomes, and remediation.",
+  "schemaType": "event-stream",
+  "requiredFields": ["timestamp", "service", "severity", "change_id", "resolution_status"],
+  "sampleSource": "ops/incidents"
+}

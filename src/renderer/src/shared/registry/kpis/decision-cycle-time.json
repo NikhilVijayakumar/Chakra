@@ -1,0 +1,9 @@
+{
+  "uid": "decision-cycle-time",
+  "name": "Decision Cycle Time",
+  "description": "Measures end-to-end time from incoming request to approved execution decision.",
+  "unit": "hours",
+  "target": "",
+  "value": "",
+  "goalMapping": "Ensures orchestration and routing are fast enough to preserve execution cadence."
+}

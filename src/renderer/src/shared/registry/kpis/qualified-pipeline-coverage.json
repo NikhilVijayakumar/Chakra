@@ -1,0 +1,9 @@
+{
+  "uid": "qualified-pipeline-coverage",
+  "name": "Qualified Pipeline Coverage",
+  "description": "Measures pipeline volume quality relative to revenue or growth targets.",
+  "unit": "x",
+  "target": "",
+  "value": "",
+  "goalMapping": "Shows whether demand generation supports committed growth plans."
+}

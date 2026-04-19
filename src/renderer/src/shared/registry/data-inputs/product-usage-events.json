@@ -1,0 +1,8 @@
+{
+  "uid": "product-usage-events",
+  "name": "Product Usage Events",
+  "description": "Event telemetry for feature usage, activation funnels, and retention behavior.",
+  "schemaType": "event-stream",
+  "requiredFields": ["timestamp", "user_id", "event_name", "feature", "session_id"],
+  "sampleSource": "analytics/events"
+}

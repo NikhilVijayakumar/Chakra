@@ -1,0 +1,7 @@
+{
+  "id": "suites",
+  "title": "Suites",
+  "route": "/suites",
+  "enabled": true,
+  "ownership": "renderer-module"
+}

@@ -1,0 +1,7 @@
+{
+  "id": "queue-monitor",
+  "title": "Queue Monitor",
+  "route": "/queue-monitor",
+  "enabled": true,
+  "ownership": "renderer-module"
+}

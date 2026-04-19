@@ -1,0 +1,9 @@
+{
+  "uid": "cross-functional-alignment-index",
+  "name": "Cross-Functional Alignment Index",
+  "description": "Measures how consistently teams execute shared priorities without conflicting handoffs.",
+  "unit": "%",
+  "target": "",
+  "value": "",
+  "goalMapping": "Confirms execution alignment across operations, finance, product, and go-to-market."
+}

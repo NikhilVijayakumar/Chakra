@@ -1,0 +1,8 @@
+{
+  "uid": "compliance-audit-trail",
+  "name": "Compliance Audit Trail",
+  "description": "Control execution evidence, policy checks, and exception workflows for audit reviews.",
+  "schemaType": "document",
+  "requiredFields": ["timestamp", "control_id", "owner", "result", "evidence_ref"],
+  "sampleSource": "compliance/audits"
+}

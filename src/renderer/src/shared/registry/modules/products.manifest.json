@@ -1,0 +1,7 @@
+{
+  "id": "products",
+  "title": "Products",
+  "route": "/products",
+  "enabled": true,
+  "ownership": "renderer-module"
+}

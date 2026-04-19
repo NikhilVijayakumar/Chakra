@@ -1,0 +1,7 @@
+{
+  "id": "design-audit",
+  "title": "Design Audit",
+  "route": "/design-audit",
+  "enabled": true,
+  "ownership": "renderer-module"
+}

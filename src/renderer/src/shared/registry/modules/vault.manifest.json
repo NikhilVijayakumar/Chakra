@@ -1,0 +1,7 @@
+{
+  "id": "vault",
+  "title": "Vault",
+  "route": "/vault",
+  "enabled": true,
+  "ownership": "renderer-module"
+}

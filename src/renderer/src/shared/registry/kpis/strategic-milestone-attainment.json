@@ -1,0 +1,9 @@
+{
+  "uid": "strategic-milestone-attainment",
+  "name": "Strategic Milestone Attainment",
+  "description": "Tracks the percentage of strategic initiatives completed on schedule with validated outcomes.",
+  "unit": "%",
+  "target": "",
+  "value": "",
+  "goalMapping": "Measures whether strategic plans convert into delivered business outcomes."
+}

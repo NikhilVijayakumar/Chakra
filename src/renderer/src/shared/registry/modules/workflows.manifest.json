@@ -1,0 +1,7 @@
+{
+  "id": "workflows",
+  "title": "Workflows",
+  "route": "/workflows",
+  "enabled": true,
+  "ownership": "renderer-module"
+}

@@ -1,0 +1,7 @@
+{
+  "id": "notification-centre",
+  "title": "Notification Centre",
+  "route": "/notifications",
+  "enabled": true,
+  "ownership": "renderer-module"
+}

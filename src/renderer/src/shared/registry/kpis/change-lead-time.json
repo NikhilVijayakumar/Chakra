@@ -1,0 +1,9 @@
+{
+  "uid": "change-lead-time",
+  "name": "Change Lead Time",
+  "description": "Measures elapsed time from approved change request to stable production delivery.",
+  "unit": "hours",
+  "target": "",
+  "value": "",
+  "goalMapping": "Balances delivery speed with operational stability."
+}

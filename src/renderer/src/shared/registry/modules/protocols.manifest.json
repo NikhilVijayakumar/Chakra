@@ -1,0 +1,7 @@
+{
+  "id": "protocols",
+  "title": "Protocols",
+  "route": "/protocols",
+  "enabled": true,
+  "ownership": "renderer-module"
+}

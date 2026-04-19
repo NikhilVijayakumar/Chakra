@@ -1,0 +1,7 @@
+{
+  "id": "agents",
+  "title": "Agents",
+  "route": "/agents",
+  "enabled": true,
+  "ownership": "renderer-module"
+}

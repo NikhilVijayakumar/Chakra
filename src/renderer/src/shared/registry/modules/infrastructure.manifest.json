@@ -1,0 +1,7 @@
+{
+  "id": "infrastructure",
+  "title": "Infrastructure",
+  "route": "/infrastructure",
+  "enabled": true,
+  "ownership": "renderer-module"
+}

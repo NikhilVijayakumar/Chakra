@@ -1,0 +1,9 @@
+{
+  "uid": "burn-variance-ratio",
+  "name": "Burn Variance Ratio",
+  "description": "Compares planned versus actual spend to detect financial drift and control gaps.",
+  "unit": "%",
+  "target": "",
+  "value": "",
+  "goalMapping": "Signals whether financial controls are holding under execution pressure."
+}

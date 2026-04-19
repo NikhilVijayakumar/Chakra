@@ -1,0 +1,7 @@
+{
+  "id": "file-viewers",
+  "title": "File Viewers",
+  "route": null,
+  "enabled": true,
+  "ownership": "renderer-module"
+}

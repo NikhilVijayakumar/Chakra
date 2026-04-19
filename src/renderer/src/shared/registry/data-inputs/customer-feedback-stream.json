@@ -1,0 +1,8 @@
+{
+  "uid": "customer-feedback-stream",
+  "name": "Customer Feedback Stream",
+  "description": "Structured feedback records from interviews, support, surveys, and success calls.",
+  "schemaType": "document",
+  "requiredFields": ["timestamp", "channel", "customer_segment", "sentiment", "feedback_text"],
+  "sampleSource": "support/feedback"
+}

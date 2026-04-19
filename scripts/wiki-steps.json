@@ -1,0 +1,80 @@
+{
+  "name": "chakra",
+  "summaryLines": 3,
+  "maxDepth": 3,
+  "sections": [
+    "navigation",
+    "global",
+    "vision",
+    "dependencies",
+    "systemMap",
+    "featureDetails",
+    "conceptMap",
+    "editMap",
+    "flows",
+    "docsManifest",
+    "rules",
+    "api",
+    "maintenance"
+  ],
+  "conceptMap": [
+    { "name": "Virtual Drive", "impl": "driveControllerService", "path": "src/main/services/" },
+    { "name": "App Registry", "impl": "appRegistryService", "path": "src/main/services/" },
+    { "name": "Git Installer", "impl": "gitInstallerService", "path": "src/main/services/" },
+    { "name": "SSH Governance", "impl": "sshGovernanceService", "path": "src/main/services/" },
+    { "name": "SQLite Cache", "impl": "sqliteCacheService", "path": "src/main/services/" },
+    { "name": "Google Sheets Cache", "impl": "googleSheetsCacheService", "path": "src/main/services/" },
+    { "name": "Authentication", "impl": "authService", "path": "src/main/services/" },
+    { "name": "UI Components", "impl": "Astra", "path": "src/renderer/common/components/" }
+  ],
+  "editMap": [
+    { "task": "Add runtime service", "path": "src/main/services/" },
+    { "task": "Add UI component", "path": "src/renderer/common/components/" },
+    { "task": "Add feature doc", "path": "docs/feature/" },
+    { "task": "Add architecture doc", "path": "docs/architecture/" },
+    { "task": "Add screen", "path": "src/renderer/[screen-family]/" }
+  ],
+  "flows": [
+    { "name": "Add runtime service", "steps": ["Create docs/feature/[feature].md", "Define service contract", "Implement in src/main/services/", "Add IPC handler in preload.ts", "Run npm run generate:index"] },
+    { "name": "Add architecture doc", "steps": ["Create docs/architecture/[pattern].md", "Add to wiki-steps.json featureDetails", "Run npm run generate:index"] },
+    { "name": "Add UI screen", "steps": ["Create Container → ViewModel → View", "Export in components/index.ts", "Run npm run generate:index"] }
+  ],
+  "rules": [
+    "All apps installed to mounted virtual drive folder under app/",
+    "Git-based installation from configured repositories",
+    "Role-based SSH access for governance repos under data/governance/",
+    "Login required before virtual drive access",
+    "SQLite cache for login, env config, and Google Sheets data",
+    "Use Prana virtual drive for encrypted storage",
+    "Use Astra MVVM pattern: Container → ViewModel → View",
+    "Always use useDataState for async operations",
+    "Never hardcode colors - use theme tokens",
+    "Never hardcode strings - use localization",
+    "Use Prana IPC for internal, ApiService for external"
+  ],
+  "featureDetails": {
+    "architecture": [
+      { "area": "MVVM Pattern", "doc": "docs/architecture/mvvm-pattern.md", "services": ["useDataState", "Container → ViewModel → View"] },
+      { "area": "State Management", "doc": "docs/architecture/state-management.md", "services": ["StateType", "AppState"] },
+      { "area": "Theming", "doc": "docs/architecture/theming.md", "services": ["ThemeProvider", "ThemeTokens"] },
+      { "area": "Localization", "doc": "docs/architecture/localization.md", "services": ["LanguageProvider", "useLanguage"] },
+      { "area": "Repository", "doc": "docs/architecture/repository.md", "services": ["ApiService", "ServerResponse"] }
+    ],
+    "core": [
+      { "area": "Virtual Drive", "doc": "docs/feature/virtual-drive.md", "services": ["driveControllerService", "mountRegistryService"] },
+      { "area": "Storage", "doc": "docs/feature/storage.md", "services": ["sqliteCacheService", "googleSheetsCacheService"] },
+      { "area": "App Installation", "doc": "docs/feature/installation.md", "services": ["gitInstallerService", "appRegistryService"] },
+      { "area": "App Uninstallation", "doc": "docs/feature/uninstallation.md", "services": ["appRegistryService"] },
+      { "area": "App Listing", "doc": "docs/feature/listing.md", "services": ["appRegistryService"] }
+    ],
+    "updates": [
+      { "area": "App Updates", "doc": "docs/feature/updates.md", "services": ["gitInstallerService", "appRegistryService"] },
+      { "area": "Configuration", "doc": "docs/feature/configuration.md", "services": ["appRegistryService"] }
+    ],
+    "security": [
+      { "area": "Authentication", "doc": "docs/feature/authentication.md", "services": ["authService"] },
+      { "area": "Governance", "doc": "docs/feature/governance.md", "services": ["sshGovernanceService"] },
+      { "area": "Roles", "doc": "docs/feature/governance-roles.md", "services": ["sshGovernanceService"] }
+    ]
+  }
+}

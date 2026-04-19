@@ -1,0 +1,9 @@
+{
+  "uid": "control-pass-rate",
+  "name": "Control Pass Rate",
+  "description": "Tracks successful completion of defined compliance and policy control checks.",
+  "unit": "%",
+  "target": "",
+  "value": "",
+  "goalMapping": "Verifies governance effectiveness and audit readiness."
+}

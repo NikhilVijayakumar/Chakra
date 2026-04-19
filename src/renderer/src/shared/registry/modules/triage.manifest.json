@@ -1,0 +1,7 @@
+{
+  "id": "triage",
+  "title": "Triage",
+  "route": "/triage",
+  "enabled": true,
+  "ownership": "renderer-module"
+}

@@ -1,0 +1,9 @@
+{
+  "uid": "hiring-cycle-time",
+  "name": "Hiring Cycle Time",
+  "description": "Measures total elapsed time from approved requisition to accepted offer.",
+  "unit": "days",
+  "target": "",
+  "value": "",
+  "goalMapping": "Assesses talent acquisition responsiveness and staffing throughput."
+}
