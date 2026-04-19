@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react'
 
 const astraCompat = resolve(__dirname, 'src/renderer/src/shared/astraCompat.ts')
 const astraPackage = resolve(__dirname, 'node_modules/astra')
+const canvasShim = resolve(__dirname, 'src/main/shims/canvas.ts')
 
 export default defineConfig(() => {
   return {
@@ -11,6 +12,7 @@ export default defineConfig(() => {
       plugins: [externalizeDepsPlugin({ exclude: ['prana', 'dharma'] })],
       build: {
         rollupOptions: {
+          external: [/^jsdom($|\/)/, /^css-tree($|\/)/, /^cssstyle($|\/)/],
           input: {
             index: resolve(__dirname, 'src/main/index.ts')
           }
@@ -19,7 +21,8 @@ export default defineConfig(() => {
       resolve: {
         alias: {
           prana: resolve('node_modules/prana/src'),
-          dharma: resolve('node_modules/dharma/src')
+          dharma: resolve('node_modules/dharma/src'),
+          canvas: canvasShim
         }
       }
     },
@@ -33,7 +36,8 @@ export default defineConfig(() => {
       resolve: {
         alias: {
           prana: resolve('node_modules/prana/src'),
-          dharma: resolve('node_modules/dharma/src')
+          dharma: resolve('node_modules/dharma/src'),
+          canvas: canvasShim
         }
       }
     },

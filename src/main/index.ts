@@ -1,5 +1,6 @@
 import { app, BrowserWindow } from 'electron'
-import { existsSync, mkdirSync, readFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 import {
   applyPranaRuntimeDefaults,
   bridgeMainViteDhiEnvToRuntime,
@@ -125,6 +126,22 @@ const bootstrapPranaMain = async (): Promise<void> => {
     console.error('[DHI] Unsafe startup blocked:', startupSafety)
     void showUnsafeStartupWindow(startupSafety.message)
     return
+  }
+
+  // css-tree's CJS build reads ../data/patch.json relative to bundled chunks.
+  // In dev/runtime bundling that file may be absent under out/main/data.
+  try {
+    const cssTreePackagePath = require.resolve('css-tree/package.json')
+    const cssTreePackageDir = dirname(cssTreePackagePath)
+    const cssTreePatchSource = join(cssTreePackageDir, 'data', 'patch.json')
+    const cssTreePatchTargetDir = join(__dirname, 'data')
+    const cssTreePatchTarget = join(cssTreePatchTargetDir, 'patch.json')
+    if (!existsSync(cssTreePatchTarget)) {
+      mkdirSync(cssTreePatchTargetDir, { recursive: true })
+      copyFileSync(cssTreePatchSource, cssTreePatchTarget)
+    }
+  } catch (error) {
+    console.warn('[DHI] Could not stage css-tree patch.json runtime asset', error)
   }
 
   await import('prana/main/index')

@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { volatileSessionStore } from 'prana/ui/authentication/state/volatileSessionStore'
 import { LoginView } from 'prana/ui/authentication/view/LoginView'
 
+type AuthLoginResult = Awaited<ReturnType<typeof window.api.auth.login>>
+
 /**
  * LoginContainerOverride
  *
@@ -29,7 +31,7 @@ export const LoginContainerOverride: FC = () => {
 
     try {
       // Invoke the IPC handler directly to avoid Prana's LoginContainer interference
-      const result: any = await (window as any).api.auth.login(email, password)
+      const result: AuthLoginResult = await window.api.auth.login(email, password)
 
       console.log('[LoginOverride] Login response:', {
         success: result.success,
