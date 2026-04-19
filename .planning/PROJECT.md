@@ -2,19 +2,22 @@
 
 ## What This Is
 
-An Electron-based application for installing other applications in the system.
+An Electron desktop host built on Prana and Astra to run governance-driven application workflows.
 
 ## Core Value
 
-Enable users to install, manage, and run other applications through Chakra.
+Deliver a clean, predictable startup where authenticated users reach the Chakra workspace safely and quickly.
 
-## Current Milestone: v0.1 [Project Documentation]
+## Current Milestone: v0.2 [Auth-First Startup Cleanup]
 
-**Goal:** Create full project documentation in docs/feature and update overview in README.md
+**Goal:** Replace DHI-first bootstrap leftovers with Chakra auth-first startup so the app launches only after successful authentication, then initializes runtime using Chakra paths and cache strategy.
 
 **Target features:**
-- Full project documentation in docs/feature/
-- Updated overview in README.md
+- Authentication-first app startup and guarded post-login boot
+- Electron main bootstrap cleanup to remove obsolete DHI assumptions
+- Environment-backed credential loading for login defaults
+- Chakra cache/runtime path standardization under chakra-app/cache
+- Runtime env snapshot caching for initial milestone baseline
 
 ## Active Requirements
 
@@ -24,21 +27,31 @@ _Requirements for the current milestone:_
 
 ## Validated Requirements
 
-_None yet — this is the first milestone._
+- ✓ User can view full project overview in README.md — v0.1 / Phase 1
+- ✓ User can view feature documentation in docs/feature/ — v0.1 / Phase 2
+- ✓ Project has feature-specific documentation for core functionality — v0.1 / Phase 2
 
 ## Out of Scope
 
-- Any actual Electron app functionality (installing apps) — future milestones
+- OAuth / SSO integrations — deferred until local auth flow is stable
+- Multi-account tenancy — deferred until single-user bootstrap hardening lands
+- Product feature expansion copied from DHI modules — intentionally excluded until Chakra-first baseline is complete
 
 ## Key Decisions
 
-_None yet — first milestone._
+| Decision | Rationale | Outcome |
+|----------|-----------|---------|
+| Authenticate before workspace bootstrap | Prevent partial initialization and stale runtime state before user validation | — Pending |
+| Read initial login seed from env | Supports controlled local bootstrap without adding onboarding complexity in this milestone | — Pending |
+| Standardize runtime cache path to chakra-app/cache | Removes DHI naming leakage and gives deterministic cache location for support/debugging | — Pending |
+| Persist full env snapshot to cache for now | Speeds migration by preserving runtime context while stronger secret filtering is designed | ⚠️ Revisit |
 
 ## Context
 
-- **Project type:** Electron application for system app installation
-- **Tech stack:** Electron (to be determined)
-- **Target platform:** Windows (implied by win32 environment)
+- **Project type:** Electron + React desktop application with Prana runtime services and Astra UI foundations
+- **Current baseline:** Several startup/auth flows still use DHI-prefixed config and legacy assumptions
+- **Reference systems:** Prana docs and Astra docs used as architecture/source of truth for integration patterns
+- **Target platform:** Windows-first development and local runtime execution
 
 ## Evolution
 
@@ -59,4 +72,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ---
 
-**Last updated:** 2026-04-19
+**Last updated:** 2026-04-19 after milestone v0.2 initialization
