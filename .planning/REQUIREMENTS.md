@@ -1,71 +1,78 @@
-# Requirements — Milestone v0.1
+# Requirements: Chakra
 
-## Active Requirements
+**Defined:** 2026-04-19
+**Core Value:** Deliver a clean, predictable startup where authenticated users reach the Chakra workspace safely and quickly.
 
-### Documentation
+## v1 Requirements (Milestone v0.2)
 
-- [ ] **DOC-01**: User can view full project overview in README.md
+### Authentication
 
-- [ ] **DOC-02**: User can view feature documentation in docs/feature/
+- [ ] **AUTH-01**: User can authenticate with credentials before any workspace bootstrap starts.
+- [ ] **AUTH-02**: User sees a clear login error state for invalid credentials without partial app initialization.
+- [ ] **AUTH-03**: User session token is persisted in runtime state and gates navigation to protected routes.
+- [ ] **AUTH-04**: User reaches dashboard/onboarding only after successful auth response from main process.
 
-- [ ] **DOC-03**: Project has feature-specific documentation for core functionality
+### Startup Cleanup
 
-### App Installation
+- [ ] **BOOT-01**: App startup removes obsolete DHI-specific bootstrap behavior that is not required by Chakra.
+- [ ] **BOOT-02**: Main process startup path is split into pre-auth and post-auth stages with explicit sequencing.
+- [ ] **BOOT-03**: Startup safety validation failures show actionable Chakra-branded error messaging and fail closed.
 
-- [ ] **INST-01**: User can install applications to the system
+### Runtime Environment
 
-- [ ] **INST-02**: Application bundles are properly packaged for installation
+- [ ] **ENV-01**: Login username and password can be loaded from env values for initial local bootstrap.
+- [ ] **ENV-02**: Runtime env bridge uses Chakra-named configuration aliases while preserving compatibility where needed.
+- [ ] **ENV-03**: Effective startup env values are normalized and available to post-auth runtime initialization.
 
-### App Uninstallation
+### Cache and Runtime Paths
 
-- [ ] **UNINST-01**: User can uninstall installed applications
-
-- [ ] **UNINST-02**: Uninstallation removes all application files
-
-### App Listing
-
-- [ ] **LIST-01**: User can list all installed applications
-
-- [ ] **LIST-02**: App listing is filtered by user role (after login)
-
-### App Updates
-
-- [ ] **UPDT-01**: System can check for updates to installed apps
-
-- [ ] **UPDT-02**: User can apply updates to installed apps
-
-### Configuration
-
-- [ ] **CONF-01**: Administrator can set minimum supported version for apps
-
-- [ ] **CONF-02**: Configuration can be managed per application
+- [ ] **CACHE-01**: App cache path resolves to chakra-app/cache in local runtime setup.
+- [ ] **CACHE-02**: Entire effective env snapshot is cached to chakra-app/cache for this milestone.
+- [ ] **CACHE-03**: Cache initialization is deterministic across dev runs and does not crash when cache folders are missing.
 
 ## Future Requirements
 
-_Deferred to future milestones:_
+### Security Hardening
 
-- UI/UX implementation details
+- **SECU-01**: Env snapshot cache excludes sensitive secrets and uses allowlist-based persistence.
+- **SECU-02**: Credentials move from env bootstrap into secure first-run enrollment flow.
+
+### Platform Features
+
+- **PLAT-01**: Restore only Chakra-relevant DHI-derived modules after compatibility audit.
+- **PLAT-02**: Expand installer/uninstaller runtime features on top of stabilized auth-first startup.
 
 ## Out of Scope
 
-- Actual Electron app runtime implementation beyond documentation
-- User authentication implementation
-- Full configuration UI
+| Feature | Reason |
+|---------|--------|
+| OAuth and external identity providers | Focus this milestone on stabilizing local auth and startup correctness first |
+| Full security redesign of secret handling | Deferred to dedicated hardening milestone after baseline flow is stable |
+| Rebuilding all inherited DHI features | Most inherited modules are intentionally deferred pending Chakra-first relevance review |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DOC-01 | 1 | Pending |
-| DOC-02 | 2 | Pending |
-| DOC-03 | 2 | Pending |
-| INST-01 | — | Future |
-| INST-02 | — | Future |
-| UNINST-01 | — | Future |
-| UNINST-02 | — | Future |
-| LIST-01 | — | Future |
-| LIST-02 | — | Future |
-| UPDT-01 | — | Future |
-| UPDT-02 | — | Future |
-| CONF-01 | — | Future |
-| CONF-02 | — | Future |
+| AUTH-01 | Phase 3 | Pending |
+| AUTH-02 | Phase 3 | Pending |
+| AUTH-03 | Phase 3 | Pending |
+| AUTH-04 | Phase 3 | Pending |
+| BOOT-01 | Phase 4 | Pending |
+| BOOT-02 | Phase 4 | Pending |
+| BOOT-03 | Phase 4 | Pending |
+| ENV-01 | Phase 5 | Pending |
+| ENV-02 | Phase 5 | Pending |
+| ENV-03 | Phase 5 | Pending |
+| CACHE-01 | Phase 6 | Pending |
+| CACHE-02 | Phase 6 | Pending |
+| CACHE-03 | Phase 6 | Pending |
+
+**Coverage:**
+- v1 requirements: 13 total
+- Mapped to phases: 13
+- Unmapped: 0
+
+---
+*Requirements defined: 2026-04-19*
+*Last updated: 2026-04-19 after milestone v0.2 definition*
