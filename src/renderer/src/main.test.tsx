@@ -10,7 +10,6 @@ afterEach(() => {
 
 const PublicOnlyGuard = ({ children }: { children: React.ReactNode }) => <>{children}</>
 const MainAppGuard = ({ children }: { children: React.ReactNode }) => <>{children}</>
-const OnboardingGuard = ({ children }: { children: React.ReactNode }) => <>{children}</>
 const ModuleRouteGuard = ({ children }: { children: React.ReactNode }) => <>{children}</>
 
 const MainLayout = ({ children }: { children: React.ReactNode }) => (
@@ -22,7 +21,7 @@ const PreAuthLayout = ({ children }: { children: React.ReactNode }) => (
 
 const Splash = () => <div data-testid="splash-container">Splash</div>
 const Login = () => <div data-testid="login-container">Login</div>
-const Onboarding = () => <div data-testid="onboarding-container">Onboarding</div>
+const AppsPlaceholder = () => <div data-testid="apps-placeholder-container">Apps Placeholder</div>
 const Dashboard = () => <div data-testid="dashboard-container">Dashboard</div>
 
 const TestRoutes = ({ initialPath }: { initialPath: string }) => (
@@ -43,13 +42,15 @@ const TestRoutes = ({ initialPath }: { initialPath: string }) => (
       />
 
       <Route
-        path="/onboarding"
+        path="/apps"
         element={
-          <OnboardingGuard>
-            <MainLayout>
-              <Onboarding />
-            </MainLayout>
-          </OnboardingGuard>
+          <MainAppGuard>
+            <ModuleRouteGuard>
+              <MainLayout>
+                <AppsPlaceholder />
+              </MainLayout>
+            </ModuleRouteGuard>
+          </MainAppGuard>
         }
       />
 
@@ -69,7 +70,7 @@ const TestRoutes = ({ initialPath }: { initialPath: string }) => (
   </MemoryRouter>
 )
 
-describe('Route contract: splash -> login -> onboarding -> dashboard', () => {
+describe('Route contract: splash -> login -> apps -> dashboard', () => {
   it('redirects root to splash', () => {
     render(<TestRoutes initialPath="/" />)
     expect(screen.queryByTestId('splash-container')).not.toBeNull()
@@ -81,10 +82,10 @@ describe('Route contract: splash -> login -> onboarding -> dashboard', () => {
     expect(screen.queryByTestId('login-container')).not.toBeNull()
   })
 
-  it('keeps onboarding as post-login gate route', () => {
-    render(<TestRoutes initialPath="/onboarding" />)
+  it('keeps app listing placeholder as post-login default route', () => {
+    render(<TestRoutes initialPath="/apps" />)
     expect(screen.queryByTestId('main-layout')).not.toBeNull()
-    expect(screen.queryByTestId('onboarding-container')).not.toBeNull()
+    expect(screen.queryByTestId('apps-placeholder-container')).not.toBeNull()
   })
 
   it('keeps dashboard as authenticated home route', () => {

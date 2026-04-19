@@ -53,11 +53,10 @@ export const LoginContainerOverride: FC = () => {
       if (result.sessionToken) {
         console.log('[LoginOverride] Storing session token')
         volatileSessionStore.setSessionToken(result.sessionToken)
-        volatileSessionStore.setOnboardingStatus(result.isFirstInstall ? 'NOT_STARTED' : 'COMPLETED')
+        volatileSessionStore.setOnboardingStatus('COMPLETED')
       }
 
-      // Determine navigation target
-      const targetRoute = result.isFirstInstall ? '/onboarding' : '/dashboard'
+      const targetRoute = '/apps'
       console.log('[LoginOverride] Login successful, navigating to:', targetRoute)
 
       // Use navigate instead of window.location to stay in React router

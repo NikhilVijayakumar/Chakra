@@ -10,7 +10,6 @@ import { MainLayout } from 'prana/ui/layout/MainLayout'
 import {
   MainAppGuard,
   ModuleRouteGuard,
-  OnboardingGuard,
   PublicOnlyGuard
 } from 'prana/ui/components/AuthGuard'
 import { ForgotPasswordContainer } from 'prana/ui/authentication/view/ForgotPasswordContainer'
@@ -82,9 +81,12 @@ const TriageContainer = loadNamedComponent(
   () => import('@renderer/features/triage/view/TriageContainer'),
   'TriageContainer'
 )
-const OnboardingContainer = loadNamedComponent(
-  () => import('prana/ui/onboarding/view/OnboardingContainer'),
-  'OnboardingContainer'
+const AppListingPlaceholderContainer = loadNamedComponent(
+  () =>
+    import(
+      '@renderer/features/app-listing-placeholder/view/AppListingPlaceholderContainer'
+    ),
+  'AppListingPlaceholderContainer'
 )
 const DashboardContainer = loadNamedComponent(
   () => import('@renderer/features/dashboard/view/DashboardContainer'),
@@ -303,16 +305,18 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
                     </MainAppGuard>
                   }
                 />
-                {/* Authenticated & Onboarding — guarded and requires Lifecycle */}
+                {/* Authenticated routes — guarded and require Lifecycle */}
                 <Route element={<LifecycleWrapper />}>
                   <Route
-                    path="/onboarding"
+                    path="/apps"
                     element={
-                      <OnboardingGuard>
+                      <MainAppGuard>
+                        <ModuleRouteGuard routePath="/apps">
                         <MainLayout>
-                          <OnboardingContainer />
+                            <AppListingPlaceholderContainer />
                         </MainLayout>
-                      </OnboardingGuard>
+                        </ModuleRouteGuard>
+                      </MainAppGuard>
                     }
                   />
                   <Route

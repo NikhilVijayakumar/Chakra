@@ -118,7 +118,7 @@ describe('LoginContainerOverride', () => {
     expect(navigateMock).not.toHaveBeenCalled()
   })
 
-  it('stores session token and navigates to onboarding on first install', async () => {
+  it('stores session token and navigates to app listing placeholder on first install', async () => {
     loginMock.mockResolvedValue({
       success: true,
       isFirstInstall: true,
@@ -135,13 +135,13 @@ describe('LoginContainerOverride', () => {
       expect(setSessionTokenMock).toHaveBeenCalledWith('session-token-123')
     })
 
-    expect(setOnboardingStatusMock).toHaveBeenCalledWith('NOT_STARTED')
+    expect(setOnboardingStatusMock).toHaveBeenCalledWith('COMPLETED')
     await waitFor(() => {
-      expect(navigateMock).toHaveBeenCalledWith('/onboarding', { replace: true })
+      expect(navigateMock).toHaveBeenCalledWith('/apps', { replace: true })
     })
   })
 
-  it('stores session token and navigates to dashboard after bootstrap', async () => {
+  it('stores session token and navigates to app listing placeholder after bootstrap', async () => {
     loginMock.mockResolvedValue({
       success: true,
       isFirstInstall: false,
@@ -160,7 +160,7 @@ describe('LoginContainerOverride', () => {
 
     expect(setOnboardingStatusMock).toHaveBeenCalledWith('COMPLETED')
     await waitFor(() => {
-      expect(navigateMock).toHaveBeenCalledWith('/dashboard', { replace: true })
+      expect(navigateMock).toHaveBeenCalledWith('/apps', { replace: true })
     })
   })
 })
