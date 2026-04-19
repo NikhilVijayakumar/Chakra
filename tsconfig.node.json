@@ -13,9 +13,6 @@
     "paths": {
       "prana/*": [
         "node_modules/prana/src/*"
-      ],
-      "dharma/*": [
-        "node_modules/dharma/src/*"
       ]
     }
   }

@@ -1861,223 +1861,41 @@ interface DhiApi {
     queueList: () => Promise<QueueEntry[]>
   }
   dharma: {
-    // Company management
-    getCompanies: () => Promise<Company[]>
-    getCompany: (companyId: string) => Promise<CompanyRegistry>
+    getCompanies: () => Promise<any>
+    getCompany: (companyId: string) => Promise<any>
     getActiveCompany: () => Promise<string | null>
     setActiveCompany: (companyId: string) => Promise<void>
-
-    // Registry data - load from Dharma
-    getAgents: (companyId: string) => Promise<AgentsCatalog>
-    getAgent: (companyId: string, agentPath: string) => Promise<AgentDefinition>
-    getSkills: (companyId: string) => Promise<Skill[]>
-    getProtocols: (companyId: string) => Promise<Protocol[]>
-    getWorkflows: (companyId: string) => Promise<Workflow[]>
-    getKpis: (companyId: string) => Promise<Kpi[]>
-    getDataInputs: (companyId: string) => Promise<DataInput[]>
-    getProducts: (companyId: string) => Promise<ProductCatalog>
-    getProduct: (companyId: string, productId: string) => Promise<Product>
-
-    // Sync status - from SQLite
-    getAgentsSyncStatus: (companyId: string) => Promise<Record<string, DharmaSyncStatus>>
-    getSkillsSyncStatus: (companyId: string) => Promise<Record<string, DharmaSyncStatus>>
-    getProtocolsSyncStatus: (companyId: string) => Promise<Record<string, DharmaSyncStatus>>
-    getWorkflowsSyncStatus: (companyId: string) => Promise<Record<string, DharmaSyncStatus>>
-    getKpisSyncStatus: (companyId: string) => Promise<Record<string, DharmaSyncStatus>>
-    getDataInputsSyncStatus: (companyId: string) => Promise<Record<string, DharmaSyncStatus>>
-    getProductsSyncStatus: (companyId: string) => Promise<Record<string, DharmaSyncStatus>>
-
-    // Sync to cache - SQLite (Dharma → SQLite)
-    syncAgentToCache: (companyId: string, agent: AgentDefinition) => Promise<SyncResult>
-    syncSkillToCache: (companyId: string, skill: Skill) => Promise<SyncResult>
-    syncProtocolToCache: (companyId: string, protocol: Protocol) => Promise<SyncResult>
-    syncWorkflowToCache: (companyId: string, workflow: Workflow) => Promise<SyncResult>
-    syncKpiToCache: (companyId: string, kpi: Kpi) => Promise<SyncResult>
-    syncDataInputToCache: (companyId: string, dataInput: DataInput) => Promise<SyncResult>
-    syncProductToCache: (companyId: string, product: Product) => Promise<SyncResult>
-
-    // Save to vault - user triggered (SQLite → Vault)
-    saveAgentToVault: (companyId: string, agent: AgentDefinition) => Promise<SaveResult>
-    saveSkillToVault: (companyId: string, skill: Skill) => Promise<SaveResult>
-    saveProtocolToVault: (companyId: string, protocol: Protocol) => Promise<SaveResult>
-    saveWorkflowToVault: (companyId: string, workflow: Workflow) => Promise<SaveResult>
-    saveKpiToVault: (companyId: string, kpi: Kpi) => Promise<SaveResult>
-    saveDataInputToVault: (companyId: string, dataInput: DataInput) => Promise<SaveResult>
-    saveProductToVault: (companyId: string, product: Product) => Promise<SaveResult>
+    getAgents: (companyId: string) => Promise<any>
+    getAgent: (companyId: string, agentPath: string) => Promise<any>
+    getSkills: (companyId: string) => Promise<any>
+    getProtocols: (companyId: string) => Promise<any>
+    getWorkflows: (companyId: string) => Promise<any>
+    getKpis: (companyId: string) => Promise<any>
+    getDataInputs: (companyId: string) => Promise<any>
+    getProducts: (companyId: string) => Promise<any>
+    getProduct: (companyId: string, productId: string) => Promise<any>
+    getAgentsSyncStatus: (companyId: string) => Promise<Record<string, any>>
+    getSkillsSyncStatus: (companyId: string) => Promise<Record<string, any>>
+    getProtocolsSyncStatus: (companyId: string) => Promise<Record<string, any>>
+    getWorkflowsSyncStatus: (companyId: string) => Promise<Record<string, any>>
+    getKpisSyncStatus: (companyId: string) => Promise<Record<string, any>>
+    getDataInputsSyncStatus: (companyId: string) => Promise<Record<string, any>>
+    getProductsSyncStatus: (companyId: string) => Promise<Record<string, any>>
+    syncAgentToCache: (companyId: string, agent: unknown) => Promise<any>
+    syncSkillToCache: (companyId: string, skill: unknown) => Promise<any>
+    syncProtocolToCache: (companyId: string, protocol: unknown) => Promise<any>
+    syncWorkflowToCache: (companyId: string, workflow: unknown) => Promise<any>
+    syncKpiToCache: (companyId: string, kpi: unknown) => Promise<any>
+    syncDataInputToCache: (companyId: string, dataInput: unknown) => Promise<any>
+    syncProductToCache: (companyId: string, product: unknown) => Promise<any>
+    saveAgentToVault: (companyId: string, agent: unknown) => Promise<any>
+    saveSkillToVault: (companyId: string, skill: unknown) => Promise<any>
+    saveProtocolToVault: (companyId: string, protocol: unknown) => Promise<any>
+    saveWorkflowToVault: (companyId: string, workflow: unknown) => Promise<any>
+    saveKpiToVault: (companyId: string, kpi: unknown) => Promise<any>
+    saveDataInputToVault: (companyId: string, dataInput: unknown) => Promise<any>
+    saveProductToVault: (companyId: string, product: unknown) => Promise<any>
   }
-}
-
-// Dharma types
-type DharmaSyncStatus = 'DRAFT' | 'NEW' | 'SYNCED'
-
-interface SaveResult {
-  success: boolean
-  entityId: string
-  vaultPath?: string
-  error?: string
-}
-
-interface SyncResult {
-  success: boolean
-  entityId: string
-  cachePath?: string
-  error?: string
-}
-
-interface Company {
-  id: string
-  name: string
-  createdAt: string
-  updatedAt: string
-}
-
-interface CompanyRegistry {
-  id: string
-  name: string
-  metadata: CompanyMetadata
-  products: Product[]
-}
-
-interface CompanyMetadata {
-  companyName: string
-  companyType: string
-  foundation: string
-  philosophy: string
-  vision: string
-  coreValues: string[]
-  aiGovernance: AiGovernanceModel
-  globalNonNegotiables: string[]
-  website?: WebsiteInfo
-}
-
-interface AiGovernanceModel {
-  roles: Record<string, RoleDefinition>
-  boundaries: string[]
-}
-
-interface RoleDefinition {
-  name: string
-  description: string
-  responsibilities: string[]
-}
-
-interface WebsiteInfo {
-  name: string
-  url: string
-}
-
-interface AgentDefinition {
-  uid: string
-  name: string
-  role: string
-  backstory: string
-  goal: string
-  core_objective: string
-  individual_vision: string
-  role_non_negotiable_requirements: string[]
-  objectives_long_term: string[]
-  personality_traits: string[]
-  interaction_style: string
-  constraints: string[]
-  skills: string[]
-  kpis: string[]
-  protocols: string[]
-  workflows?: string[]
-  data?: string[]
-  data_requirements: string[]
-}
-
-interface AgentsCatalog {
-  companyId: string
-  entries: AgentDefinition[]
-}
-
-interface Skill {
-  id: string
-  name: string
-  description: string
-  type: string
-  metadata?: Record<string, unknown>
-}
-
-interface Protocol {
-  id: string
-  name: string
-  description: string
-  type: string
-  content?: string
-  metadata?: Record<string, unknown>
-}
-
-interface WorkflowStep {
-  id: string
-  name: string
-  description?: string
-  agent?: string
-  outputs?: string[]
-}
-
-interface Workflow {
-  id: string
-  name: string
-  trigger: string
-  steps: WorkflowStep[]
-  outputs?: string[]
-  metadata?: Record<string, unknown>
-}
-
-interface Kpi {
-  id: string
-  name: string
-  description: string
-  formula: string
-  unit?: string
-  targets: Record<string, number>
-  thresholds?: KpiThresholds
-  frequency?: string
-  responsibleRole?: string
-  metadata?: Record<string, unknown>
-}
-
-interface KpiThresholds {
-  critical?: number
-  warning?: number
-  optimal?: number
-}
-
-interface DataInput {
-  id: string
-  name: string
-  description?: string
-  type: string
-  schema: Record<string, unknown>
-  source?: string
-  location?: string
-  requiredFields?: string[]
-  privacyClassification?: string
-  updateFrequency?: string
-  responsibleRole?: string
-  metadata?: Record<string, unknown>
-}
-
-interface Product {
-  id: string
-  name: string
-  goal: string
-  vision?: string
-  problemSolved?: string
-  usp?: string
-  mvpFeatures?: string[]
-  validationMethodology?: string
-  successCriteria?: string
-  targetAudience?: string[]
-  contentFormats?: string[]
-  metadata?: Record<string, unknown>
-}
-
-interface ProductCatalog {
-  companyId: string
-  products: Product[]
 }
 
 declare global {

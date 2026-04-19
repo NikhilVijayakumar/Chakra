@@ -162,13 +162,6 @@ const bootstrapPranaMain = async (): Promise<void> => {
     console.warn('[DHI] Could not seed SQLite config store:', error)
   }
 
-  try {
-    const { registerDharmaIpcHandlers } = await import('./services/dharmaIpcHandlers')
-    registerDharmaIpcHandlers()
-    console.info('[DHI] Dharma IPC handlers registered')
-  } catch (error) {
-    console.warn('[DHI] Failed to register Dharma IPC handlers', error)
-  }
 }
 
 loadWorkspaceEnvFile({

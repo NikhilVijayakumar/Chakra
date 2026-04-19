@@ -9,7 +9,7 @@ const canvasShim = resolve(__dirname, 'src/main/shims/canvas.ts')
 export default defineConfig(() => {
   return {
     main: {
-      plugins: [externalizeDepsPlugin({ exclude: ['prana', 'dharma'] })],
+      plugins: [externalizeDepsPlugin({ exclude: ['prana'] })],
       build: {
         rollupOptions: {
           external: [/^jsdom($|\/)/, /^css-tree($|\/)/, /^cssstyle($|\/)/],
@@ -21,7 +21,6 @@ export default defineConfig(() => {
       resolve: {
         alias: {
           prana: resolve('node_modules/prana/src'),
-          dharma: resolve('node_modules/dharma/src'),
           canvas: canvasShim
         }
       }
@@ -36,7 +35,6 @@ export default defineConfig(() => {
       resolve: {
         alias: {
           prana: resolve('node_modules/prana/src'),
-          dharma: resolve('node_modules/dharma/src'),
           canvas: canvasShim
         }
       }
@@ -53,7 +51,6 @@ export default defineConfig(() => {
             replacement: resolve('src/renderer/src/shared/pranaConfigCompat.ts')
           },
           { find: 'prana', replacement: resolve('node_modules/prana/src') },
-          { find: 'dharma', replacement: resolve('node_modules/dharma/src') },
           { find: 'react', replacement: resolve('node_modules/react') },
           { find: 'react-dom', replacement: resolve('node_modules/react-dom') },
           { find: '@mui/material', replacement: resolve('node_modules/@mui/material') },

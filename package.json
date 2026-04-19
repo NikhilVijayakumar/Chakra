@@ -32,7 +32,6 @@
     "@mui/material": "^7.3.9",
     "astra": "github:NikhilVijayakumar/astra",
     "bcryptjs": "^3.0.3",
-    "dharma": "github:NikhilVijayakumar/dharma#fdc6c78df4b6ca566dae996eafa7dd8cd4154a3e",
     "prana": "github:NikhilVijayakumar/prana",
     "react-router-dom": "^7.13.1",
     "sql.js": "^1.14.1"
