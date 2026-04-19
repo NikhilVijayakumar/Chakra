@@ -13,22 +13,22 @@ describe('startupSecurity', () => {
   it('reports missing and placeholder startup config values', () => {
     const issues = validateRequiredStartupConfig(
       makeEnv({
-        MAIN_VITE_DHI_DEFAULT_COMPANY: 'acme-company',
-        MAIN_VITE_DHI_GOV_REPO_URL: 'https://example.com/repo.git',
-        MAIN_VITE_DHI_GOV_REPO_PATH: '/gov/repo',
-        MAIN_VITE_DHI_DIRECTOR_NAME: 'Director',
-        MAIN_VITE_DHI_DIRECTOR_EMAIL: 'director@example.com',
-        MAIN_VITE_DHI_DIRECTOR_PASSWORD_HASH: 'replace_with_bcrypt_hash',
-        MAIN_VITE_DHI_VAULT_ARCHIVE_PASSWORD: 'vault-pass',
-        MAIN_VITE_DHI_VAULT_ARCHIVE_SALT: 'vault-salt',
-        MAIN_VITE_DHI_VAULT_KDF_ITERATIONS: '   '
+        MAIN_VITE_CHAKRA_DEFAULT_COMPANY: 'acme-company',
+        MAIN_VITE_CHAKRA_GOV_REPO_URL: 'https://example.com/repo.git',
+        MAIN_VITE_CHAKRA_GOV_REPO_PATH: '/gov/repo',
+        MAIN_VITE_CHAKRA_DIRECTOR_NAME: 'Director',
+        MAIN_VITE_CHAKRA_DIRECTOR_EMAIL: 'director@example.com',
+        MAIN_VITE_CHAKRA_DIRECTOR_PASSWORD_HASH: 'replace_with_bcrypt_hash',
+        MAIN_VITE_CHAKRA_VAULT_ARCHIVE_PASSWORD: 'vault-pass',
+        MAIN_VITE_CHAKRA_VAULT_ARCHIVE_SALT: 'vault-salt',
+        MAIN_VITE_CHAKRA_VAULT_KDF_ITERATIONS: '   '
       })
     )
 
     expect(issues).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ key: 'DHI_DIRECTOR_PASSWORD_HASH' }),
-        expect.objectContaining({ key: 'DHI_VAULT_KDF_ITERATIONS' })
+        expect.objectContaining({ key: 'CHAKRA_DIRECTOR_PASSWORD_HASH' }),
+        expect.objectContaining({ key: 'CHAKRA_VAULT_KDF_ITERATIONS' })
       ])
     )
   })
@@ -36,15 +36,15 @@ describe('startupSecurity', () => {
   it('blocks startup when SSH verification is unavailable', async () => {
     const result = await verifyStartupSafety({
       env: makeEnv({
-        MAIN_VITE_DHI_DEFAULT_COMPANY: 'acme-company',
-        MAIN_VITE_DHI_GOV_REPO_URL: 'https://example.com/repo.git',
-        MAIN_VITE_DHI_GOV_REPO_PATH: '/gov/repo',
-        MAIN_VITE_DHI_DIRECTOR_NAME: 'Director',
-        MAIN_VITE_DHI_DIRECTOR_EMAIL: 'director@example.com',
-        MAIN_VITE_DHI_DIRECTOR_PASSWORD_HASH: 'hash',
-        MAIN_VITE_DHI_VAULT_ARCHIVE_PASSWORD: 'vault-pass',
-        MAIN_VITE_DHI_VAULT_ARCHIVE_SALT: 'vault-salt',
-        MAIN_VITE_DHI_VAULT_KDF_ITERATIONS: '210000'
+        MAIN_VITE_CHAKRA_DEFAULT_COMPANY: 'acme-company',
+        MAIN_VITE_CHAKRA_GOV_REPO_URL: 'https://example.com/repo.git',
+        MAIN_VITE_CHAKRA_GOV_REPO_PATH: '/gov/repo',
+        MAIN_VITE_CHAKRA_DIRECTOR_NAME: 'Director',
+        MAIN_VITE_CHAKRA_DIRECTOR_EMAIL: 'director@example.com',
+        MAIN_VITE_CHAKRA_DIRECTOR_PASSWORD_HASH: 'hash',
+        MAIN_VITE_CHAKRA_VAULT_ARCHIVE_PASSWORD: 'vault-pass',
+        MAIN_VITE_CHAKRA_VAULT_ARCHIVE_SALT: 'vault-salt',
+        MAIN_VITE_CHAKRA_VAULT_KDF_ITERATIONS: '210000'
       }),
       loadAuthStatus: async () => ({
         sshVerified: false,
@@ -64,15 +64,15 @@ describe('startupSecurity', () => {
   it('allows startup when SSH is verified and config is valid', async () => {
     const result = await verifyStartupSafety({
       env: makeEnv({
-        MAIN_VITE_DHI_DEFAULT_COMPANY: 'acme-company',
-        MAIN_VITE_DHI_GOV_REPO_URL: 'https://example.com/repo.git',
-        MAIN_VITE_DHI_GOV_REPO_PATH: '/gov/repo',
-        MAIN_VITE_DHI_DIRECTOR_NAME: 'Director',
-        MAIN_VITE_DHI_DIRECTOR_EMAIL: 'director@example.com',
-        MAIN_VITE_DHI_DIRECTOR_PASSWORD_HASH: 'hash',
-        MAIN_VITE_DHI_VAULT_ARCHIVE_PASSWORD: 'vault-pass',
-        MAIN_VITE_DHI_VAULT_ARCHIVE_SALT: 'vault-salt',
-        MAIN_VITE_DHI_VAULT_KDF_ITERATIONS: '210000'
+        MAIN_VITE_CHAKRA_DEFAULT_COMPANY: 'acme-company',
+        MAIN_VITE_CHAKRA_GOV_REPO_URL: 'https://example.com/repo.git',
+        MAIN_VITE_CHAKRA_GOV_REPO_PATH: '/gov/repo',
+        MAIN_VITE_CHAKRA_DIRECTOR_NAME: 'Director',
+        MAIN_VITE_CHAKRA_DIRECTOR_EMAIL: 'director@example.com',
+        MAIN_VITE_CHAKRA_DIRECTOR_PASSWORD_HASH: 'hash',
+        MAIN_VITE_CHAKRA_VAULT_ARCHIVE_PASSWORD: 'vault-pass',
+        MAIN_VITE_CHAKRA_VAULT_ARCHIVE_SALT: 'vault-salt',
+        MAIN_VITE_CHAKRA_VAULT_KDF_ITERATIONS: '210000'
       }),
       loadAuthStatus: async () => ({
         sshVerified: true,
@@ -91,15 +91,15 @@ describe('startupSecurity', () => {
   it('reports invalid config when SSH is verified but config is broken', async () => {
     const result = await verifyStartupSafety({
       env: makeEnv({
-        MAIN_VITE_DHI_DEFAULT_COMPANY: 'acme-company',
-        MAIN_VITE_DHI_GOV_REPO_URL: 'https://example.com/repo.git',
-        MAIN_VITE_DHI_GOV_REPO_PATH: '/gov/repo',
-        MAIN_VITE_DHI_DIRECTOR_NAME: 'Director',
-        MAIN_VITE_DHI_DIRECTOR_EMAIL: 'director@example.com',
-        MAIN_VITE_DHI_DIRECTOR_PASSWORD_HASH: 'replace_with_bcrypt_hash',
-        MAIN_VITE_DHI_VAULT_ARCHIVE_PASSWORD: 'vault-pass',
-        MAIN_VITE_DHI_VAULT_ARCHIVE_SALT: 'vault-salt',
-        MAIN_VITE_DHI_VAULT_KDF_ITERATIONS: '0'
+        MAIN_VITE_CHAKRA_DEFAULT_COMPANY: 'acme-company',
+        MAIN_VITE_CHAKRA_GOV_REPO_URL: 'https://example.com/repo.git',
+        MAIN_VITE_CHAKRA_GOV_REPO_PATH: '/gov/repo',
+        MAIN_VITE_CHAKRA_DIRECTOR_NAME: 'Director',
+        MAIN_VITE_CHAKRA_DIRECTOR_EMAIL: 'director@example.com',
+        MAIN_VITE_CHAKRA_DIRECTOR_PASSWORD_HASH: 'replace_with_bcrypt_hash',
+        MAIN_VITE_CHAKRA_VAULT_ARCHIVE_PASSWORD: 'vault-pass',
+        MAIN_VITE_CHAKRA_VAULT_ARCHIVE_SALT: 'vault-salt',
+        MAIN_VITE_CHAKRA_VAULT_KDF_ITERATIONS: '0'
       }),
       loadAuthStatus: async () => ({
         sshVerified: true,
@@ -115,13 +115,13 @@ describe('startupSecurity', () => {
     expect(result.reason).toBe('invalid_config')
     expect(result.issues).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ key: 'DHI_DIRECTOR_PASSWORD_HASH' }),
-        expect.objectContaining({ key: 'DHI_VAULT_KDF_ITERATIONS' })
+        expect.objectContaining({ key: 'CHAKRA_DIRECTOR_PASSWORD_HASH' }),
+        expect.objectContaining({ key: 'CHAKRA_VAULT_KDF_ITERATIONS' })
       ])
     )
   })
 
-  it('accepts MAIN_VITE_DHI_DEFAULT_COMPANY as fallback when DHI_DEFAULT_COMPANY is absent', async () => {
+  it('accepts MAIN_VITE_DHI_DEFAULT_COMPANY as fallback when CHAKRA_DEFAULT_COMPANY is absent', async () => {
     const result = await verifyStartupSafety({
       env: makeEnv({
         MAIN_VITE_DHI_DEFAULT_COMPANY: 'acme-company',
@@ -150,15 +150,15 @@ describe('startupSecurity', () => {
 
   it('keeps startup validation deterministic and fail-safe across repeated checks', async () => {
     const env = makeEnv({
-      MAIN_VITE_DHI_DEFAULT_COMPANY: 'acme-company',
-      MAIN_VITE_DHI_GOV_REPO_URL: 'https://example.com/repo.git',
-      MAIN_VITE_DHI_GOV_REPO_PATH: '/gov/repo',
-      MAIN_VITE_DHI_DIRECTOR_NAME: 'Director',
-      MAIN_VITE_DHI_DIRECTOR_EMAIL: 'director@example.com',
-      MAIN_VITE_DHI_DIRECTOR_PASSWORD_HASH: 'hash',
-      MAIN_VITE_DHI_VAULT_ARCHIVE_PASSWORD: 'vault-pass',
-      MAIN_VITE_DHI_VAULT_ARCHIVE_SALT: 'vault-salt',
-      MAIN_VITE_DHI_VAULT_KDF_ITERATIONS: '210000'
+      MAIN_VITE_CHAKRA_DEFAULT_COMPANY: 'acme-company',
+      MAIN_VITE_CHAKRA_GOV_REPO_URL: 'https://example.com/repo.git',
+      MAIN_VITE_CHAKRA_GOV_REPO_PATH: '/gov/repo',
+      MAIN_VITE_CHAKRA_DIRECTOR_NAME: 'Director',
+      MAIN_VITE_CHAKRA_DIRECTOR_EMAIL: 'director@example.com',
+      MAIN_VITE_CHAKRA_DIRECTOR_PASSWORD_HASH: 'hash',
+      MAIN_VITE_CHAKRA_VAULT_ARCHIVE_PASSWORD: 'vault-pass',
+      MAIN_VITE_CHAKRA_VAULT_ARCHIVE_SALT: 'vault-salt',
+      MAIN_VITE_CHAKRA_VAULT_KDF_ITERATIONS: '210000'
     })
 
     const first = await verifyStartupSafety({

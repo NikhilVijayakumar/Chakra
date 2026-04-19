@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { resolve } from 'node:path'
 import {
   applyPranaRuntimeDefaults,
-  bridgeMainViteDhiEnvToRuntime,
+  bridgeMainViteRuntimeEnvToRuntime,
   ensureWritableDevRuntimePaths,
   loadWorkspaceEnvFile,
   normalizeEnvValue,
@@ -26,7 +26,7 @@ describe('runtimeEnv', () => {
   })
 
   it('loads .env values without overriding existing non-empty env entries', () => {
-    const cwd = 'E:/Python/dhi'
+    const cwd = 'E:/Python/chakra'
     const envPath = resolve(cwd, '.env')
     const env = createEnv({
       EXISTING: 'keep-me'
@@ -79,20 +79,21 @@ describe('runtimeEnv', () => {
 
   it('bridges MAIN_VITE values only into missing runtime keys', () => {
     const env = createEnv({
-      MAIN_VITE_DHI_DEFAULT_COMPANY: 'acme-company',
+      MAIN_VITE_CHAKRA_DEFAULT_COMPANY: 'acme-company',
       DHI_GOV_REPO_URL: 'https://existing.example/repo',
-      MAIN_VITE_DHI_GOV_REPO_URL: ' https://bridge.example/repo ',
-      MAIN_VITE_DHI_DIRECTOR_NAME: 'Director Name',
-      MAIN_VITE_DHI_SYNC_PUSH_INTERVAL_MS: '300000',
+      MAIN_VITE_CHAKRA_GOV_REPO_URL: ' https://bridge.example/repo ',
+      MAIN_VITE_CHAKRA_DIRECTOR_NAME: 'Director Name',
+      MAIN_VITE_CHAKRA_SYNC_PUSH_INTERVAL_MS: '300000',
       DHI_DIRECTOR_NAME: 'Existing Director'
     })
 
-    bridgeMainViteDhiEnvToRuntime(env)
+    bridgeMainViteRuntimeEnvToRuntime(env)
 
     expect(env.DHI_GOV_REPO_URL).toBe('https://existing.example/repo')
+    expect(env.CHAKRA_GOV_REPO_URL).toBe('https://bridge.example/repo')
     expect(env.DHI_DIRECTOR_NAME).toBe('Existing Director')
     expect(env.DHI_SYNC_PUSH_INTERVAL_MS).toBe('300000')
-    expect(env.DHI_DEFAULT_COMPANY).toBe('acme-company')
+    expect(env.CHAKRA_DEFAULT_COMPANY).toBe('acme-company')
     expect(env.PRANA_GOVERNANCE_REPO_URL).toBe('https://existing.example/repo')
   })
 
@@ -110,14 +111,16 @@ describe('runtimeEnv', () => {
   it('applies runtime defaults only when values are missing', () => {
     const env = createEnv({
       PRANA_SYNC_PUSH_INTERVAL_MS: '450000',
-      DHI_SYNC_CRON_ENABLED: 'false'
+      CHAKRA_SYNC_CRON_ENABLED: 'false'
     })
 
     applyPranaRuntimeDefaults(env)
 
     expect(env.PRANA_SYNC_PUSH_INTERVAL_MS).toBe('450000')
+    expect(env.CHAKRA_SYNC_PUSH_INTERVAL_MS).toBe('120000')
     expect(env.DHI_SYNC_PUSH_INTERVAL_MS).toBe('120000')
-    expect(env.DHI_SYNC_CRON_ENABLED).toBe('false')
+    expect(env.CHAKRA_SYNC_CRON_ENABLED).toBe('false')
+    expect(env.DHI_SYNC_CRON_ENABLED).toBe('true')
     expect(env.PRANA_SYNC_PULL_CRON_EXPRESSION).toBe('*/15 * * * *')
   })
 

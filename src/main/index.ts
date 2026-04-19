@@ -3,7 +3,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import {
   applyPranaRuntimeDefaults,
-  bridgeMainViteDhiEnvToRuntime,
+  bridgeMainViteRuntimeEnvToRuntime,
   ensureWritableDevRuntimePaths,
   loadWorkspaceEnvFile,
   resolveRendererUrl
@@ -19,7 +19,7 @@ const showUnsafeStartupWindow = async (message: string): Promise<void> => {
     width: 720,
     height: 420,
     autoHideMenuBar: true,
-    title: 'DHI Startup Blocked',
+    title: 'Chakra Startup Blocked',
     webPreferences: {
       sandbox: false,
       contextIsolation: true
@@ -31,7 +31,7 @@ const showUnsafeStartupWindow = async (message: string): Promise<void> => {
       <html>
         <head>
           <meta charset="utf-8" />
-          <title>DHI Startup Blocked</title>
+          <title>Chakra Startup Blocked</title>
           <style>
             body { font-family: Arial, sans-serif; margin: 0; padding: 32px; background: #111827; color: #f9fafb; }
             .card { max-width: 640px; margin: 0 auto; padding: 24px; border-radius: 16px; background: #1f2937; box-shadow: 0 18px 40px rgba(0,0,0,.35); }
@@ -58,6 +58,10 @@ const showUnsafeStartupWindow = async (message: string): Promise<void> => {
 
 const bootstrapPranaMain = async (): Promise<void> => {
   const rendererUrl = resolveRendererUrl(process.env)
+  const runtimeEnvValue = (suffix: string): string | undefined => {
+    return process.env[`CHAKRA_${suffix}`] ?? process.env[`DHI_${suffix}`]
+  }
+
   try {
     setPranaPlatformRuntime({
       ...(rendererUrl ? { rendererUrl } : {}),
@@ -68,38 +72,38 @@ const bootstrapPranaMain = async (): Promise<void> => {
 
     const config = {
       director: {
-        name: process.env.DHI_DIRECTOR_NAME || 'Director',
-        email: process.env.DHI_DIRECTOR_EMAIL || 'director@example.com',
-        password: process.env.DHI_DIRECTOR_PASSWORD,
-        passwordHash: process.env.DHI_DIRECTOR_PASSWORD_HASH
+        name: runtimeEnvValue('DIRECTOR_NAME') || 'Director',
+        email: runtimeEnvValue('DIRECTOR_EMAIL') || 'director@example.com',
+        password: runtimeEnvValue('DIRECTOR_PASSWORD'),
+        passwordHash: runtimeEnvValue('DIRECTOR_PASSWORD_HASH')
       },
       governance: {
-        repoUrl: process.env.DHI_GOV_REPO_URL || '',
-        repoPath: process.env.DHI_GOV_REPO_PATH || ''
+        repoUrl: runtimeEnvValue('GOV_REPO_URL') || '',
+        repoPath: runtimeEnvValue('GOV_REPO_PATH') || ''
       },
       vault: {
-        specVersion: process.env.DHI_VAULT_SPEC_VERSION,
-        tempZipExtension: process.env.DHI_VAULT_TEMP_ZIP_EXT,
-        outputPrefix: process.env.DHI_VAULT_OUTPUT_PREFIX,
-        archivePassword: process.env.DHI_VAULT_ARCHIVE_PASSWORD || 'default',
-        archiveSalt: process.env.DHI_VAULT_ARCHIVE_SALT || 'salt',
-        kdfIterations: process.env.DHI_VAULT_KDF_ITERATIONS
-          ? parseInt(process.env.DHI_VAULT_KDF_ITERATIONS)
+        specVersion: runtimeEnvValue('VAULT_SPEC_VERSION'),
+        tempZipExtension: runtimeEnvValue('VAULT_TEMP_ZIP_EXT'),
+        outputPrefix: runtimeEnvValue('VAULT_OUTPUT_PREFIX'),
+        archivePassword: runtimeEnvValue('VAULT_ARCHIVE_PASSWORD') || 'default',
+        archiveSalt: runtimeEnvValue('VAULT_ARCHIVE_SALT') || 'salt',
+        kdfIterations: runtimeEnvValue('VAULT_KDF_ITERATIONS')
+          ? parseInt(runtimeEnvValue('VAULT_KDF_ITERATIONS') ?? '600000')
           : 600000,
-        keepTempOnClose: process.env.DHI_VAULT_KEEP_TEMP_ON_CLOSE === 'true'
+        keepTempOnClose: runtimeEnvValue('VAULT_KEEP_TEMP_ON_CLOSE') === 'true'
       },
       sync: {
-        pushIntervalMs: process.env.DHI_SYNC_PUSH_INTERVAL_MS
-          ? parseInt(process.env.DHI_SYNC_PUSH_INTERVAL_MS)
+        pushIntervalMs: runtimeEnvValue('SYNC_PUSH_INTERVAL_MS')
+          ? parseInt(runtimeEnvValue('SYNC_PUSH_INTERVAL_MS') ?? '120000')
           : 120000,
-        cronEnabled: process.env.DHI_SYNC_CRON_ENABLED === 'true',
-        pushCronExpression: process.env.DHI_SYNC_PUSH_CRON_EXPRESSION || '*/10 * * * *',
-        pullCronExpression: process.env.DHI_SYNC_PULL_CRON_EXPRESSION || '*/15 * * * *'
+        cronEnabled: runtimeEnvValue('SYNC_CRON_ENABLED') === 'true',
+        pushCronExpression: runtimeEnvValue('SYNC_PUSH_CRON_EXPRESSION') || '*/10 * * * *',
+        pullCronExpression: runtimeEnvValue('SYNC_PULL_CRON_EXPRESSION') || '*/15 * * * *'
       },
       channels: {
-        telegramChannelId: process.env.DHI_TELEGRAM_CHANNEL_ID,
-        slackChannelId: process.env.DHI_SLACK_CHANNEL_ID,
-        teamsChannelId: process.env.DHI_TEAMS_CHANNEL_ID
+        telegramChannelId: runtimeEnvValue('TELEGRAM_CHANNEL_ID'),
+        slackChannelId: runtimeEnvValue('SLACK_CHANNEL_ID'),
+        teamsChannelId: runtimeEnvValue('TEAMS_CHANNEL_ID')
       },
       virtualDrives: {
         // Disabled previously to prevent rclone crash, but now Prana's syncProviderService
@@ -110,12 +114,12 @@ const bootstrapPranaMain = async (): Promise<void> => {
     }
 
     setPranaRuntimeConfig(config)
-    console.info('[DHI] Injected environment into Prana platform runtime')
+    console.info('[Chakra] Injected environment into Prana platform runtime')
   } catch (error) {
-    console.warn('[DHI] Failed to inject environment into Prana platform runtime', error)
+    console.warn('[Chakra] Failed to inject environment into Prana platform runtime', error)
   }
 
-  // Pre-splash safety: only validate Dhi's own env keys.
+  // Pre-splash safety: validate startup env keys before renderer bootstrap.
   // SSH/auth verification is deferred to the splash screen flow
   // (app:bootstrap-host seeds SQLite, then startupOrchestrator verifies SSH).
   // Calling authService.getStatus() here would crash because
@@ -123,7 +127,7 @@ const bootstrapPranaMain = async (): Promise<void> => {
   const startupSafety = await verifyStartupSafety({ env: process.env })
 
   if (!startupSafety.allowed) {
-    console.error('[DHI] Unsafe startup blocked:', startupSafety)
+    console.error('[Chakra] Unsafe startup blocked:', startupSafety)
     void showUnsafeStartupWindow(startupSafety.message)
     return
   }
@@ -141,7 +145,7 @@ const bootstrapPranaMain = async (): Promise<void> => {
       copyFileSync(cssTreePatchSource, cssTreePatchTarget)
     }
   } catch (error) {
-    console.warn('[DHI] Could not stage css-tree patch.json runtime asset', error)
+    console.warn('[Chakra] Could not stage css-tree patch.json runtime asset', error)
   }
 
   await import('prana/main/index')
@@ -156,10 +160,10 @@ const bootstrapPranaMain = async (): Promise<void> => {
     const currentConfig = getPranaRuntimeConfig()
     if (currentConfig) {
       await sqliteConfigStoreService.seedFromRuntimePropsIfEmpty(currentConfig)
-      console.info('[DHI] Seeded SQLite config store with current runtime config if empty')
+      console.info('[Chakra] Seeded SQLite config store with current runtime config if empty')
     }
   } catch (error) {
-    console.warn('[DHI] Could not seed SQLite config store:', error)
+    console.warn('[Chakra] Could not seed SQLite config store:', error)
   }
 
 }
@@ -170,7 +174,7 @@ loadWorkspaceEnvFile({
   existsSync,
   readFileSync
 })
-bridgeMainViteDhiEnvToRuntime(process.env)
+bridgeMainViteRuntimeEnvToRuntime(process.env)
 applyPranaRuntimeDefaults(process.env)
 ensureWritableDevRuntimePaths({
   env: process.env,

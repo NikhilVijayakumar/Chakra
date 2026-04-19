@@ -6,29 +6,33 @@ export const DEFAULT_PRANA_SYNC_CRON_ENABLED = 'true'
 export const DEFAULT_PRANA_SYNC_PUSH_CRON_EXPRESSION = '*/10 * * * *'
 export const DEFAULT_PRANA_SYNC_PULL_CRON_EXPRESSION = '*/15 * * * *'
 
-export const DHI_RUNTIME_KEYS = [
-  'DHI_DEFAULT_COMPANY',
-  'DHI_GOV_REPO_URL',
-  'DHI_GOV_REPO_PATH',
-  'DHI_DIRECTOR_NAME',
-  'DHI_DIRECTOR_EMAIL',
-  'DHI_DIRECTOR_PASSWORD',
-  'DHI_DIRECTOR_PASSWORD_HASH',
-  'DHI_VAULT_SPEC_VERSION',
-  'DHI_VAULT_TEMP_ZIP_EXT',
-  'DHI_VAULT_OUTPUT_PREFIX',
-  'DHI_VAULT_ARCHIVE_PASSWORD',
-  'DHI_VAULT_ARCHIVE_SALT',
-  'DHI_VAULT_KDF_ITERATIONS',
-  'DHI_VAULT_KEEP_TEMP_ON_CLOSE',
-  'DHI_SYNC_PUSH_INTERVAL_MS',
-  'DHI_SYNC_CRON_ENABLED',
-  'DHI_SYNC_PUSH_CRON_EXPRESSION',
-  'DHI_SYNC_PULL_CRON_EXPRESSION',
-  'DHI_TELEGRAM_CHANNEL_ID',
-  'DHI_SLACK_CHANNEL_ID',
-  'DHI_TEAMS_CHANNEL_ID'
+const RUNTIME_KEY_SUFFIXES = [
+  'DEFAULT_COMPANY',
+  'GOV_REPO_URL',
+  'GOV_REPO_PATH',
+  'DIRECTOR_NAME',
+  'DIRECTOR_EMAIL',
+  'DIRECTOR_PASSWORD',
+  'DIRECTOR_PASSWORD_HASH',
+  'VAULT_SPEC_VERSION',
+  'VAULT_TEMP_ZIP_EXT',
+  'VAULT_OUTPUT_PREFIX',
+  'VAULT_ARCHIVE_PASSWORD',
+  'VAULT_ARCHIVE_SALT',
+  'VAULT_KDF_ITERATIONS',
+  'VAULT_KEEP_TEMP_ON_CLOSE',
+  'SYNC_PUSH_INTERVAL_MS',
+  'SYNC_CRON_ENABLED',
+  'SYNC_PUSH_CRON_EXPRESSION',
+  'SYNC_PULL_CRON_EXPRESSION',
+  'TELEGRAM_CHANNEL_ID',
+  'SLACK_CHANNEL_ID',
+  'TEAMS_CHANNEL_ID'
 ] as const
+
+export const CHAKRA_RUNTIME_KEYS = RUNTIME_KEY_SUFFIXES.map((suffix) => `CHAKRA_${suffix}`)
+export const DHI_RUNTIME_KEYS = RUNTIME_KEY_SUFFIXES.map((suffix) => `DHI_${suffix}`)
+export const STARTUP_RUNTIME_KEYS = [...CHAKRA_RUNTIME_KEYS, ...DHI_RUNTIME_KEYS] as const
 
 interface WorkspaceEnvDependencies {
   cwd: string | undefined
@@ -125,7 +129,7 @@ export const ensureWritableDevRuntimePaths = (dependencies: DevRuntimePathDepend
   try {
     const devRuntimeRoot = join(
       dependencies.getAppPath('temp'),
-      'dhi-app-dev-runtime',
+      'chakra-app-dev-runtime',
       `pid-${dependencies.processId}`
     )
     const sessionDataPath = join(devRuntimeRoot, 'session-data')
@@ -141,25 +145,37 @@ export const ensureWritableDevRuntimePaths = (dependencies: DevRuntimePathDepend
     dependencies.setAppPath('sessionData', sessionDataPath)
     dependencies.setAppPath('cache', cachePath)
   } catch (error) {
-    console.warn('[DHI] Unable to apply writable dev runtime paths', error)
+    console.warn('[Chakra] Unable to apply writable dev runtime paths', error)
   }
 }
 
-export const bridgeMainViteDhiEnvToRuntime = (env: NodeJS.ProcessEnv): void => {
-  for (const key of DHI_RUNTIME_KEYS) {
-    const sourceValue = readMainViteEnvValue(env, key)
-    setEnvValueIfMissing(env, key, sourceValue)
+export const bridgeMainViteRuntimeEnvToRuntime = (env: NodeJS.ProcessEnv): void => {
+  for (const suffix of RUNTIME_KEY_SUFFIXES) {
+    const chakraKey = `CHAKRA_${suffix}`
+    const dhiKey = `DHI_${suffix}`
+    const chakraValue = readMainViteEnvValue(env, chakraKey)
+    const dhiValue = readMainViteEnvValue(env, dhiKey)
+    const preferredValue = chakraValue ?? dhiValue
+
+    setEnvValueIfMissing(env, chakraKey, preferredValue)
+    setEnvValueIfMissing(env, dhiKey, preferredValue)
   }
 
-  setEnvValueIfMissing(env, 'PRANA_GOVERNANCE_REPO_URL', normalizeEnvValue(env.DHI_GOV_REPO_URL))
-  setEnvValueIfMissing(env, 'PRANA_GOVERNANCE_REPO_PATH', normalizeEnvValue(env.DHI_GOV_REPO_PATH))
+  const governanceRepoUrl = normalizeEnvValue(env.CHAKRA_GOV_REPO_URL) ?? normalizeEnvValue(env.DHI_GOV_REPO_URL)
+  const governanceRepoPath = normalizeEnvValue(env.CHAKRA_GOV_REPO_PATH) ?? normalizeEnvValue(env.DHI_GOV_REPO_PATH)
+  setEnvValueIfMissing(env, 'PRANA_GOVERNANCE_REPO_URL', governanceRepoUrl)
+  setEnvValueIfMissing(env, 'PRANA_GOVERNANCE_REPO_PATH', governanceRepoPath)
 }
+
+export const bridgeMainViteDhiEnvToRuntime = bridgeMainViteRuntimeEnvToRuntime
 
 export const applyPranaRuntimeDefaults = (env: NodeJS.ProcessEnv): void => {
   setDefaultEnvValue(env, 'PRANA_SYNC_PUSH_INTERVAL_MS', DEFAULT_PRANA_SYNC_PUSH_INTERVAL_MS)
+  setDefaultEnvValue(env, 'CHAKRA_SYNC_PUSH_INTERVAL_MS', DEFAULT_PRANA_SYNC_PUSH_INTERVAL_MS)
   setDefaultEnvValue(env, 'DHI_SYNC_PUSH_INTERVAL_MS', DEFAULT_PRANA_SYNC_PUSH_INTERVAL_MS)
 
   setDefaultEnvValue(env, 'PRANA_SYNC_CRON_ENABLED', DEFAULT_PRANA_SYNC_CRON_ENABLED)
+  setDefaultEnvValue(env, 'CHAKRA_SYNC_CRON_ENABLED', DEFAULT_PRANA_SYNC_CRON_ENABLED)
   setDefaultEnvValue(env, 'DHI_SYNC_CRON_ENABLED', DEFAULT_PRANA_SYNC_CRON_ENABLED)
 
   setDefaultEnvValue(
@@ -167,11 +183,21 @@ export const applyPranaRuntimeDefaults = (env: NodeJS.ProcessEnv): void => {
     'PRANA_SYNC_PUSH_CRON_EXPRESSION',
     DEFAULT_PRANA_SYNC_PUSH_CRON_EXPRESSION
   )
+  setDefaultEnvValue(
+    env,
+    'CHAKRA_SYNC_PUSH_CRON_EXPRESSION',
+    DEFAULT_PRANA_SYNC_PUSH_CRON_EXPRESSION
+  )
   setDefaultEnvValue(env, 'DHI_SYNC_PUSH_CRON_EXPRESSION', DEFAULT_PRANA_SYNC_PUSH_CRON_EXPRESSION)
 
   setDefaultEnvValue(
     env,
     'PRANA_SYNC_PULL_CRON_EXPRESSION',
+    DEFAULT_PRANA_SYNC_PULL_CRON_EXPRESSION
+  )
+  setDefaultEnvValue(
+    env,
+    'CHAKRA_SYNC_PULL_CRON_EXPRESSION',
     DEFAULT_PRANA_SYNC_PULL_CRON_EXPRESSION
   )
   setDefaultEnvValue(env, 'DHI_SYNC_PULL_CRON_EXPRESSION', DEFAULT_PRANA_SYNC_PULL_CRON_EXPRESSION)

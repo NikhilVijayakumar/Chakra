@@ -1,5 +1,5 @@
 import type { AuthStatus } from 'prana/main/services/authService'
-import { DHI_RUNTIME_KEYS, normalizeEnvValue, readMainViteEnvValue } from './runtimeEnv'
+import { STARTUP_RUNTIME_KEYS, normalizeEnvValue, readMainViteEnvValue } from './runtimeEnv'
 
 type StartupAuthStatusLoader = () => Promise<AuthStatus>
 
@@ -16,15 +16,15 @@ export interface StartupSecurityResult {
 }
 
 const REQUIRED_STARTUP_KEYS = [
-  'DHI_DEFAULT_COMPANY',
-  'DHI_GOV_REPO_URL',
-  'DHI_GOV_REPO_PATH',
-  'DHI_DIRECTOR_NAME',
-  'DHI_DIRECTOR_EMAIL',
-  'DHI_DIRECTOR_PASSWORD_HASH',
-  'DHI_VAULT_ARCHIVE_PASSWORD',
-  'DHI_VAULT_ARCHIVE_SALT',
-  'DHI_VAULT_KDF_ITERATIONS'
+  'CHAKRA_DEFAULT_COMPANY',
+  'CHAKRA_GOV_REPO_URL',
+  'CHAKRA_GOV_REPO_PATH',
+  'CHAKRA_DIRECTOR_NAME',
+  'CHAKRA_DIRECTOR_EMAIL',
+  'CHAKRA_DIRECTOR_PASSWORD_HASH',
+  'CHAKRA_VAULT_ARCHIVE_PASSWORD',
+  'CHAKRA_VAULT_ARCHIVE_SALT',
+  'CHAKRA_VAULT_KDF_ITERATIONS'
 ] as const
 
 const PLACEHOLDER_PATTERNS = [/replace_with/i, /placeholder/i, /change_me/i, /^your_.+/i, /^todo$/i]
@@ -38,7 +38,7 @@ const isPositiveIntegerString = (value: string): boolean => {
 }
 
 export const reportSecurityError = (operation: string, error: unknown): void => {
-  console.error(`[DHI] ${operation} failed:`, error)
+  console.error(`[Chakra] ${operation} failed:`, error)
 }
 
 export const validateRequiredStartupConfig = (
@@ -47,7 +47,8 @@ export const validateRequiredStartupConfig = (
   const issues: StartupSecurityIssue[] = []
 
   const getRequiredValue = (key: (typeof REQUIRED_STARTUP_KEYS)[number]): string | undefined => {
-    return readMainViteEnvValue(env, key)
+    const legacyKey = key.replace('CHAKRA_', 'DHI_')
+    return readMainViteEnvValue(env, key) ?? readMainViteEnvValue(env, legacyKey)
   }
 
   for (const key of REQUIRED_STARTUP_KEYS) {
@@ -69,7 +70,7 @@ export const validateRequiredStartupConfig = (
       continue
     }
 
-    if (key === 'DHI_VAULT_KDF_ITERATIONS' && !isPositiveIntegerString(value)) {
+    if (key === 'CHAKRA_VAULT_KDF_ITERATIONS' && !isPositiveIntegerString(value)) {
       issues.push({
         key,
         message: 'Must be a positive integer'
@@ -89,7 +90,7 @@ export const verifyStartupSafety = async (dependencies: {
   try {
     // SSH/auth verification is optional. In Cold-Vault architecture,
     // SSH is verified during the splash screen (app:bootstrap-host flow).
-    // Pre-splash, we only validate Dhi's env keys.
+    // Pre-splash, we only validate startup env keys.
     if (dependencies.loadAuthStatus) {
       const authStatus = await dependencies.loadAuthStatus()
 
@@ -134,4 +135,4 @@ export const verifyStartupSafety = async (dependencies: {
   }
 }
 
-export const startupRequiredKeys = [...REQUIRED_STARTUP_KEYS, ...DHI_RUNTIME_KEYS]
+export const startupRequiredKeys = [...REQUIRED_STARTUP_KEYS, ...STARTUP_RUNTIME_KEYS]
