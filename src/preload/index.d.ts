@@ -1443,6 +1443,12 @@ interface IntegrationStatusSnapshot {
   }
 }
 
+interface HostDependencyStatusSnapshot {
+  passed: boolean
+  status: string
+  message: string
+}
+
 interface DhiApi {
   app: {
     getBootstrapConfig: () => Promise<Record<string, unknown>>
@@ -1451,6 +1457,7 @@ interface DhiApi {
     getBrandingConfig: () => Promise<Record<string, unknown>>
     getIntegrationStatus: () => Promise<IntegrationStatusSnapshot>
     getStartupStatus: () => Promise<StartupStatusReport>
+    getHostDependencyStatus: () => Promise<HostDependencyStatusSnapshot>
     getVaidyarReport: () => Promise<VaidyarReport>
     runVaidyarPulse: () => Promise<unknown>
     runVaidyarOnDemand: () => Promise<unknown>

@@ -11,6 +11,20 @@ const api = {
     getBrandingConfig: () => electronAPI.ipcRenderer.invoke('app:get-branding-config'),
     getIntegrationStatus: () => electronAPI.ipcRenderer.invoke('app:get-integration-status'),
     getStartupStatus: () => electronAPI.ipcRenderer.invoke('app:get-startup-status'),
+    getHostDependencyStatus: async () => {
+      const startupStatus = await electronAPI.ipcRenderer.invoke('app:get-startup-status')
+      const stages = Array.isArray(startupStatus?.stages) ? startupStatus.stages : []
+      const dependencyStage = stages.find(
+        (stage: any) => stage?.id === 'host-dependencies' || stage?.stage === 'host-dependencies'
+      )
+      const status = dependencyStage?.status ?? 'UNKNOWN'
+      return {
+        passed: status === 'SUCCESS' || status === 'READY',
+        status,
+        message:
+          dependencyStage?.message ?? 'Host dependency capability status is not available yet.'
+      }
+    },
     getVaidyarReport: () => electronAPI.ipcRenderer.invoke('app:get-vaidyar-report'),
     runVaidyarPulse: () => electronAPI.ipcRenderer.invoke('app:run-vaidyar-pulse'),
     runVaidyarOnDemand: () => electronAPI.ipcRenderer.invoke('app:run-vaidyar-on-demand'),
