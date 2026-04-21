@@ -116,6 +116,17 @@ export const useDhiSplashViewModel = (onComplete: () => void, onSshFailure: () =
             })
           } else {
             try {
+              const dependencyStatus = await (window as any).api.app.getHostDependencyStatus?.()
+              if (dependencyStatus && !dependencyStatus.passed) {
+                updateStage(currentIndex, {
+                  status: 'error',
+                  errorMessage: dependencyStatus.message || 'Host dependencies are unavailable.'
+                })
+                isExecutingRef.current = false
+                setTimeout(onSshFailure, 1500)
+                return
+              }
+
               const sshResult = await (window as any).api.auth.getStatus()
 
               if (!sshResult.sshVerified) {
