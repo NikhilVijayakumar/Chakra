@@ -12,6 +12,26 @@ import { verifyStartupSafety } from './services/startupSecurity'
 import { setPranaPlatformRuntime } from 'prana/main/services/pranaPlatformRuntime'
 import { setPranaRuntimeConfig } from 'prana/main/services/pranaRuntimeConfig'
 
+let driveLifecycleHooksRegistered = false
+
+const registerDriveLifecycleHooks = (): void => {
+  if (driveLifecycleHooksRegistered) {
+    return
+  }
+
+  driveLifecycleHooksRegistered = true
+  app.once('before-quit', () => {
+    void (async () => {
+      try {
+        const { driveControllerService } = await import('prana/main/services/driveControllerService')
+        await driveControllerService.dispose()
+      } catch (error) {
+        console.warn('[Chakra] Could not eject virtual drives during shutdown:', error)
+      }
+    })()
+  })
+}
+
 const showUnsafeStartupWindow = async (message: string): Promise<void> => {
   await app.whenReady()
 
@@ -149,6 +169,25 @@ const bootstrapPranaMain = async (): Promise<void> => {
   }
 
   await import('prana/main/index')
+
+  try {
+    const { driveControllerService } = await import('prana/main/services/driveControllerService')
+    registerDriveLifecycleHooks()
+
+    const mountResult = await driveControllerService.initializeSystemDrive()
+    if (!mountResult.success) {
+      const message = `Virtual drive initialization failed: ${mountResult.message}`
+      if (driveControllerService.isFailClosedEnabled()) {
+        console.error('[Chakra] Unsafe startup blocked:', message)
+        void showUnsafeStartupWindow(message)
+        return
+      }
+
+      console.warn('[Chakra] Continuing startup with degraded storage posture:', message)
+    }
+  } catch (error) {
+    console.warn('[Chakra] Could not initialize virtual drive lifecycle:', error)
+  }
 
   // Ensure SQLite config store is populated on first-run.
   // We use seedFromRuntimePropsIfEmpty to avoid overwriting user preferences
