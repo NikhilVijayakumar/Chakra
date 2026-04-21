@@ -39,6 +39,15 @@
 - [ ] **CLEAN-05**: DHI-facing naming in startup/auth and touched package metadata is replaced with Chakra identity.
 - [ ] **CLEAN-06**: Dharma dependency and runtime references are removed from the app.
 
+### Prana Dependency Capability and Drive Policy Integration
+
+- [ ] **P8-DEP-01**: Startup enforces reusable host dependency capability checks for SSH, Git, and virtual-drive binary.
+- [ ] **P8-DEP-02**: Dependency capability implementation remains page-agnostic and is not owned by splash flow.
+- [ ] **P8-DRV-01**: Virtual drive policy ownership is client-app controlled while runtime mount mechanics remain reusable.
+- [ ] **P8-DRV-02**: Virtual drive mounts on app start and ejects on app stop with deterministic lifecycle handling.
+- [ ] **P8-IPC-01**: Preload contract exposes typed dependency capability status for multiple renderer consumers.
+- [ ] **P8-REG-01**: Existing phase-7 splash/auth/apps route contract remains intact after dependency integration.
+
 ## Future Requirements
 
 ### Security Hardening
@@ -82,10 +91,16 @@
 | CLEAN-04 | Phase 7 | Pending |
 | CLEAN-05 | Phase 7 | Pending |
 | CLEAN-06 | Phase 7 | Pending |
+| P8-DEP-01 | Phase 8 | Pending |
+| P8-DEP-02 | Phase 8 | Pending |
+| P8-DRV-01 | Phase 8 | Pending |
+| P8-DRV-02 | Phase 8 | Pending |
+| P8-IPC-01 | Phase 8 | Pending |
+| P8-REG-01 | Phase 8 | Pending |
 
 **Coverage:**
-- v1 requirements: 19 total
-- Mapped to phases: 19
+- v1 requirements: 25 total
+- Mapped to phases: 25
 - Unmapped: 0
 
 ---

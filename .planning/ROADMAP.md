@@ -73,6 +73,17 @@ Plans:
 - [x] 07-01-PLAN.md — Core startup cleanup: DHI to Chakra naming, env/cache contract hardening, and Dharma removal in main/preload/package surfaces.
 - [x] 07-02-PLAN.md — Renderer route cleanup: remove onboarding path, force post-login listing placeholder, and align regression coverage.
 
+### Phase 8: prana has fixed the pr we raised docs/pr/prana so now we need to implement we need to check all dependency services are installed like git, ssh and virtual drive binary. check prana documentation for details E:/Python/prana/docs/index.md you can also check their implementation if you want E:/Python/prana/src feature documentation E:/Python/prana/docs/features and pr E:/Python/prana/docs/pr
+
+**Goal:** Integrate Prana's reusable host dependency capability and client-owned drive policy so Chakra startup enforces host readiness (SSH/Git/virtual-drive) and deterministic drive lifecycle without splash coupling.
+**Requirements**: P8-DEP-01, P8-DEP-02, P8-DRV-01, P8-DRV-02, P8-IPC-01, P8-REG-01
+**Depends on:** Phase 7
+**Plans:** 2/2 plans complete
+
+Plans:
+- [x] 08-01-PLAN.md — Main-process dependency capability enforcement and drive lifecycle orchestration.
+- [x] 08-02-PLAN.md — Preload contract exposure and splash consumer refactor without architecture coupling.
+
 ---
 
 ## Phase Summary
