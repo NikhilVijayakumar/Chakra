@@ -53,6 +53,11 @@ describe('startupSecurity', () => {
         sshMessage: 'Unable to verify SSH access to governance repository.',
         repoPath: '/gov/repo',
         repoUrl: 'https://example.com/repo.git'
+      }),
+      evaluateHostDependencies: async () => ({
+        passed: true,
+        missing: [],
+        diagnostics: []
       })
     })
 
@@ -81,6 +86,11 @@ describe('startupSecurity', () => {
         sshMessage: 'SSH identity confirmed.',
         repoPath: '/gov/repo',
         repoUrl: 'https://example.com/repo.git'
+      }),
+      evaluateHostDependencies: async () => ({
+        passed: true,
+        missing: [],
+        diagnostics: []
       })
     })
 
@@ -108,6 +118,11 @@ describe('startupSecurity', () => {
         sshMessage: 'SSH identity confirmed.',
         repoPath: '/gov/repo',
         repoUrl: 'https://example.com/repo.git'
+      }),
+      evaluateHostDependencies: async () => ({
+        passed: true,
+        missing: [],
+        diagnostics: []
       })
     })
 
@@ -141,6 +156,11 @@ describe('startupSecurity', () => {
         sshMessage: 'SSH identity confirmed.',
         repoPath: '/gov/repo',
         repoUrl: 'https://example.com/repo.git'
+      }),
+      evaluateHostDependencies: async () => ({
+        passed: true,
+        missing: [],
+        diagnostics: []
       })
     })
 
@@ -170,6 +190,11 @@ describe('startupSecurity', () => {
         sshMessage: 'SSH identity confirmed.',
         repoPath: '/gov/repo',
         repoUrl: 'https://example.com/repo.git'
+      }),
+      evaluateHostDependencies: async () => ({
+        passed: true,
+        missing: [],
+        diagnostics: []
       })
     })
 
@@ -182,10 +207,48 @@ describe('startupSecurity', () => {
         sshMessage: 'SSH identity confirmed.',
         repoPath: '/gov/repo',
         repoUrl: 'https://example.com/repo.git'
+      }),
+      evaluateHostDependencies: async () => ({
+        passed: true,
+        missing: [],
+        diagnostics: []
       })
     })
 
     expect(first).toEqual(second)
     expect(first.allowed).toBe(true)
+  })
+
+  it('blocks startup when required host dependencies are missing', async () => {
+    const result = await verifyStartupSafety({
+      env: makeEnv({
+        MAIN_VITE_CHAKRA_DEFAULT_COMPANY: 'acme-company',
+        MAIN_VITE_CHAKRA_GOV_REPO_URL: 'https://example.com/repo.git',
+        MAIN_VITE_CHAKRA_GOV_REPO_PATH: '/gov/repo',
+        MAIN_VITE_CHAKRA_DIRECTOR_NAME: 'Director',
+        MAIN_VITE_CHAKRA_DIRECTOR_EMAIL: 'director@example.com',
+        MAIN_VITE_CHAKRA_DIRECTOR_PASSWORD_HASH: 'hash',
+        MAIN_VITE_CHAKRA_VAULT_ARCHIVE_PASSWORD: 'vault-pass',
+        MAIN_VITE_CHAKRA_VAULT_ARCHIVE_SALT: 'vault-salt',
+        MAIN_VITE_CHAKRA_VAULT_KDF_ITERATIONS: '210000'
+      }),
+      evaluateHostDependencies: async () => ({
+        passed: false,
+        missing: ['git'],
+        diagnostics: [
+          {
+            dependency: 'git',
+            available: false,
+            source: 'PATH',
+            command: 'git --version',
+            message: 'git is not available on PATH.'
+          }
+        ]
+      })
+    })
+
+    expect(result.allowed).toBe(false)
+    expect(result.reason).toBe('missing_dependency')
+    expect(result.issues).toEqual([{ key: 'git', message: 'git is not available on PATH.' }])
   })
 })
