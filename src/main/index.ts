@@ -61,8 +61,25 @@ const showUnsafeStartupWindow = async (message: string, diagnosticsJson?: string
 
 const bootstrapPranaMain = async (): Promise<void> => {
   const rendererUrl = resolveRendererUrl(process.env)
+  const isDevelopment = process.env.NODE_ENV === 'development' || Boolean(rendererUrl)
   const runtimeEnvValue = (suffix: string): string | undefined => {
     return process.env[`CHAKRA_${suffix}`] ?? process.env[`DHI_${suffix}`]
+  }
+  const runtimeBooleanValue = (suffix: string): boolean | undefined => {
+    const value = runtimeEnvValue(suffix)
+    if (!value) {
+      return undefined
+    }
+
+    const normalized = value.trim().toLowerCase()
+    if (normalized === 'true') {
+      return true
+    }
+    if (normalized === 'false') {
+      return false
+    }
+
+    return undefined
   }
 
   try {
@@ -109,10 +126,12 @@ const bootstrapPranaMain = async (): Promise<void> => {
         teamsChannelId: runtimeEnvValue('TEAMS_CHANNEL_ID')
       },
       virtualDrives: {
-        // Disabled previously to prevent rclone crash, but now Prana's syncProviderService
-        // properly catches mount failures, so we can re-enable it. If rclone is missing,
-        // it gracefully marks the sync as failed rather than crashing the orchestrator.
-        enabled: true
+        // In development on Windows, mounting to drive letters like "S:" can fail
+        // even when rclone exists (for example when WinFsp is unavailable), which
+        // then breaks auth/status storage by pointing app data to an invalid root.
+        // Keep production behavior fail-closed, but default dev to fallback storage
+        // unless explicitly overridden via CHAKRA_VIRTUAL_DRIVE_ENABLED/DHI_...
+        enabled: runtimeBooleanValue('VIRTUAL_DRIVE_ENABLED') ?? !isDevelopment
       }
     }
 
@@ -173,36 +192,51 @@ const bootstrapPranaMain = async (): Promise<void> => {
   await import('prana/main/index')
 
   try {
-    const { driveControllerService } = await import('prana/main/services/driveControllerService')
+    await import('prana/main/services/driveControllerService')
+    // Prana mounts system storage during app:bootstrap-host after runtime config
+    // is validated and seeded. Mounting here can force app data root to an
+    // unavailable drive letter (for example "S:") before bootstrap completes.
     registerDriveLifecycleHooks()
-
-    const mountResult = await driveControllerService.initializeSystemDrive()
-    if (!mountResult.success) {
-      const message = `Virtual drive initialization failed: ${mountResult.message}`
-      if (driveControllerService.isFailClosedEnabled()) {
-        console.error('[Chakra] Unsafe startup blocked:', message)
-        const diagnostics = JSON.stringify([{ key: 'virtual-drive', message: mountResult.message }])
-        void showUnsafeStartupWindow(message, diagnostics)
-        return
-      }
-
-      console.warn('[Chakra] Continuing startup with degraded storage posture:', message)
-    }
   } catch (error) {
-    console.warn('[Chakra] Could not initialize virtual drive lifecycle:', error)
+    console.warn('[Chakra] Could not register virtual drive lifecycle hooks:', error)
   }
 
-  // Ensure SQLite config store is populated on first-run.
-  // We use seedFromRuntimePropsIfEmpty to avoid overwriting user preferences
-  // on subsequent application startups.
+  try {
+    const { ipcMain } = await import('electron')
+    const { driveControllerService } = await import('prana/main/services/driveControllerService')
+    const { driveLayoutService } = await import('./services/driveLayoutService')
+    ipcMain.handle('chakra:ensure-drive-layout', async () => {
+      try {
+        const driveRoot = driveControllerService.getSystemDataRoot()
+        const created = await driveLayoutService.ensureDirectories(driveRoot)
+        return { ok: true, driveRoot, createdCount: created.length }
+      } catch (err) {
+        console.warn('[Chakra] ensureDirectories failed (non-fatal):', err)
+        return { ok: false, error: (err as Error)?.message ?? 'unknown error' }
+      }
+    })
+    console.info('[Chakra] Registered chakra:ensure-drive-layout IPC handler')
+  } catch (error) {
+    console.warn('[Chakra] Could not register chakra:ensure-drive-layout IPC:', error)
+  }
+
+  // Ensure SQLite runtime config snapshot exists.
+  // In development, overwrite with current env-derived config so stale snapshots
+  // cannot pin obsolete virtual-drive settings (for example enabled drive letters).
+  // In production, keep first-write behavior to avoid clobbering runtime updates.
   try {
     const { sqliteConfigStoreService } =
       await import('prana/main/services/sqliteConfigStoreService')
     const { getPranaRuntimeConfig } = await import('prana/main/services/pranaRuntimeConfig')
     const currentConfig = getPranaRuntimeConfig()
     if (currentConfig) {
-      await sqliteConfigStoreService.seedFromRuntimePropsIfEmpty(currentConfig)
-      console.info('[Chakra] Seeded SQLite config store with current runtime config if empty')
+      if (isDevelopment) {
+        await sqliteConfigStoreService.overwriteFromRuntimeProps(currentConfig)
+        console.info('[Chakra] Refreshed SQLite config snapshot from runtime config (development)')
+      } else {
+        await sqliteConfigStoreService.seedFromRuntimePropsIfEmpty(currentConfig)
+        console.info('[Chakra] Seeded SQLite config store with current runtime config if empty')
+      }
     }
   } catch (error) {
     console.warn('[Chakra] Could not seed SQLite config store:', error)
