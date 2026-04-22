@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "description": "Virtual drive folder structure and quota. Paths are created inside the mounted drive root on every startup. Existing directories are never deleted.",
+  "quota": {
+    "maxStorageMb": 10240,
+    "warnAtPercent": 85,
+    "pollIntervalMs": 60000
+  },
+  "directories": {
+    "apps": {
+      "chakra": {},
+      "dhi": {}
+    },
+    "cache": {
+      "sqlite": {}
+    },
+    "data": {
+      "governance": {}
+    }
+  }
+}
