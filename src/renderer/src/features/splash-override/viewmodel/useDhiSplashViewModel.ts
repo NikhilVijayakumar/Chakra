@@ -99,6 +99,17 @@ export const useDhiSplashViewModel = (onComplete: () => void, onSshFailure: () =
               isExecutingRef.current = false
               return // Stop — allow retry
             }
+
+            // Phase 10: ensure virtual drive directory layout exists.
+            // Safe to await — non-fatal; main-process handler catches its own errors.
+            try {
+              if ((window as any).api?.app?.ensureDriveLayout) {
+                await (window as any).api.app.ensureDriveLayout()
+              }
+            } catch (layoutErr) {
+              // Non-fatal: do not surface to user; startup continues to SSH.
+              console.warn('[Chakra] ensureDriveLayout invoke failed:', layoutErr)
+            }
           }
 
           currentIndex++

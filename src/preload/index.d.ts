@@ -1463,6 +1463,7 @@ interface DhiApi {
     checkHostDependencies: () => Promise<{ passed: boolean; diagnostics: HostDependencyDiagnostic[] }>
     getBootstrapConfig: () => Promise<Record<string, unknown>>
     bootstrapHost: (payload?: { config?: Record<string, unknown> }) => Promise<StartupStatusReport>
+    ensureDriveLayout: () => Promise<{ ok: boolean; driveRoot?: string; createdCount?: number; error?: string }>
     getRuntimeConfig: () => Promise<RuntimeConfig>
     getBrandingConfig: () => Promise<Record<string, unknown>>
     getIntegrationStatus: () => Promise<IntegrationStatusSnapshot>

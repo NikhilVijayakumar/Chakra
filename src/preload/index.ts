@@ -8,6 +8,7 @@ const api = {
     getBootstrapConfig: () => electronAPI.ipcRenderer.invoke('app:get-bootstrap-config'),
     bootstrapHost: (payload?: { config?: unknown }) =>
       electronAPI.ipcRenderer.invoke('app:bootstrap-host', payload),
+    ensureDriveLayout: () => electronAPI.ipcRenderer.invoke('chakra:ensure-drive-layout'),
     getRuntimeConfig: () => electronAPI.ipcRenderer.invoke('app:get-runtime-config'),
     getBrandingConfig: () => electronAPI.ipcRenderer.invoke('app:get-branding-config'),
     getIntegrationStatus: () => electronAPI.ipcRenderer.invoke('app:get-integration-status'),
