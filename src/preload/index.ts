@@ -4,6 +4,7 @@ import { electronAPI } from '@electron-toolkit/preload'
 // Custom APIs for renderer
 const api = {
   app: {
+    checkHostDependencies: () => electronAPI.ipcRenderer.invoke('app:check-host-dependencies'),
     getBootstrapConfig: () => electronAPI.ipcRenderer.invoke('app:get-bootstrap-config'),
     bootstrapHost: (payload?: { config?: unknown }) =>
       electronAPI.ipcRenderer.invoke('app:bootstrap-host', payload),
@@ -438,7 +439,7 @@ const api = {
       inputPath: string
       outputPath: string
       sourceFormat?: 'markdown' | 'html' | 'docx'
-      targetFormat?: 'markdown' | 'html' | 'docx'
+      targetFormat: 'markdown' | 'html' | 'docx'
     }) => electronAPI.ipcRenderer.invoke('operations:convert-document-file', payload),
     runAdministrationKpiHappinessEvaluator: () =>
       electronAPI.ipcRenderer.invoke('operations:run-administration-kpi-happiness-evaluator'),

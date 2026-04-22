@@ -6,7 +6,9 @@ import { STARTUP_RUNTIME_KEYS, normalizeEnvValue, readMainViteEnvValue } from '.
 type StartupAuthStatusLoader = () => Promise<AuthStatus>
 type StartupDependencyId = 'ssh' | 'git' | 'virtual-drive'
 
-interface StartupDependencyDiagnostic {
+export type { StartupDependencyId }
+
+export interface StartupDependencyDiagnostic {
   dependency: StartupDependencyId
   available: boolean
   source: 'PATH' | 'CONFIG'
@@ -14,7 +16,7 @@ interface StartupDependencyDiagnostic {
   message: string
 }
 
-interface StartupDependencyCapabilityResult {
+export interface StartupDependencyCapabilityResult {
   passed: boolean
   missing: StartupDependencyId[]
   diagnostics: StartupDependencyDiagnostic[]
@@ -64,6 +66,15 @@ const checkDependency = async (
 }
 
 const evaluateHostDependencies = async (): Promise<StartupDependencyCapabilityResult> => {
+  const result = await checkHostDependenciesStaged()
+  return {
+    passed: result.every((d) => d.available),
+    missing: result.filter((d) => !d.available).map((d) => d.dependency),
+    diagnostics: result
+  }
+}
+
+export const checkHostDependenciesStaged = async (): Promise<StartupDependencyDiagnostic[]> => {
   const configuredDriveBinary =
     process.env.CHAKRA_VIRTUAL_DRIVE_BINARY ??
     process.env.DHI_VIRTUAL_DRIVE_BINARY ??
@@ -82,12 +93,7 @@ const evaluateHostDependencies = async (): Promise<StartupDependencyCapabilityRe
     diagnostics.push(await checkDependency('virtual-drive', 'rclone', ['version'], 'PATH'))
   }
 
-  const missing = diagnostics.filter((entry) => !entry.available).map((entry) => entry.dependency)
-  return {
-    passed: missing.length === 0,
-    missing,
-    diagnostics
-  }
+  return diagnostics
 }
 
 const REQUIRED_STARTUP_KEYS = [

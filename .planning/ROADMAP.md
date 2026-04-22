@@ -84,6 +84,17 @@ Plans:
 - [x] 08-01-PLAN.md — Main-process dependency capability enforcement and drive lifecycle orchestration.
 - [x] 08-02-PLAN.md — Preload contract exposure and splash consumer refactor without architecture coupling.
 
+### Phase 9: Improve startup dependency blocking UI with vertical status checks showing tick/cross states before moving to blocking state
+
+**Goal:** Replace the immediate blocking error with a visual stepper showing dependency status (SSH, Git, virtual-drive) with tick/cross states BEFORE moving to blocking state. After all checks complete, if any failed, transition to blocking with full diagnostic detail and retry mechanism.
+**Requirements**: TBD
+**Depends on:** Phase 8
+**Plans:** 2/2 plans
+
+Plans:
+- [x] 09-01-PLAN.md — Main-process: Extend verifyStartupSafety for progressive results + IPC + updated blocking window.
+- [x] 09-02-PLAN.md — Renderer: Create DependencyStepper component + viewmodel + integrate into blocking flow.
+
 ---
 
 ## Phase Summary

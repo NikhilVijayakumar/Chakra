@@ -248,6 +248,10 @@ const DataInputsContainer = loadNamedComponent(
   () => import('@renderer/features/data-inputs/view/DataInputsContainer'),
   'DataInputsContainer'
 )
+const DependencyCheckContainerComponent = loadNamedComponent(
+  () => import('@renderer/features/splash-override/view/DependencyCheckContainer'),
+  'DependencyCheckContainer'
+)
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
@@ -263,6 +267,7 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
               <Routes>
                 {/* Boot */}
                 <Route path="/splash" element={<SplashContainer />} />
+                <Route path="/dependency-check" element={<DependencyCheckContainerComponent />} />
                 <Route path="/" element={<Navigate to="/splash" replace />} />
                 {/* Pre-auth — no session required */}
                 <Route

@@ -330,3 +330,4 @@ __marimo__/
 /.dhi/governance/db/live/conversation-store.sqlite
 /.dhi/governance/db/live/governance-lifecycle-queue.sqlite
 /.dhi/governance/db/live/operations-state.json
+/tsconfig.node.tsbuildinfo

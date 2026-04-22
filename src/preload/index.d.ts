@@ -1449,8 +1449,18 @@ interface HostDependencyStatusSnapshot {
   message: string
 }
 
+interface HostDependencyDiagnostic {
+  dependency: 'ssh' | 'git' | 'virtual-drive'
+  available: boolean
+  source: 'PATH' | 'CONFIG'
+  command: string
+  message: string
+}
+
 interface DhiApi {
+  [key: string]: unknown
   app: {
+    checkHostDependencies: () => Promise<{ passed: boolean; diagnostics: HostDependencyDiagnostic[] }>
     getBootstrapConfig: () => Promise<Record<string, unknown>>
     bootstrapHost: (payload?: { config?: Record<string, unknown> }) => Promise<StartupStatusReport>
     getRuntimeConfig: () => Promise<RuntimeConfig>

@@ -32,44 +32,27 @@ const registerDriveLifecycleHooks = (): void => {
   })
 }
 
-const showUnsafeStartupWindow = async (message: string): Promise<void> => {
+const showUnsafeStartupWindow = async (message: string, diagnosticsJson?: string): Promise<void> => {
   await app.whenReady()
 
   const errorWindow = new BrowserWindow({
     width: 720,
-    height: 420,
+    height: 480,
     autoHideMenuBar: true,
     title: 'Chakra Startup Blocked',
     webPreferences: {
       sandbox: false,
-      contextIsolation: true
+      contextIsolation: true,
+      preload: join(__dirname, 'preload.js')
     }
   })
 
-  errorWindow.loadURL(
-    `data:text/html;charset=utf-8,${encodeURIComponent(`
-      <html>
-        <head>
-          <meta charset="utf-8" />
-          <title>Chakra Startup Blocked</title>
-          <style>
-            body { font-family: Arial, sans-serif; margin: 0; padding: 32px; background: #111827; color: #f9fafb; }
-            .card { max-width: 640px; margin: 0 auto; padding: 24px; border-radius: 16px; background: #1f2937; box-shadow: 0 18px 40px rgba(0,0,0,.35); }
-            h1 { margin-top: 0; font-size: 24px; }
-            p { line-height: 1.5; color: #d1d5db; }
-            code { display: block; white-space: pre-wrap; padding: 16px; border-radius: 12px; background: #0f172a; color: #fca5a5; }
-          </style>
-        </head>
-        <body>
-          <div class="card">
-            <h1>Startup blocked</h1>
-            <p>The governance repository could not be reached over SSH, so the app has been stopped for safety.</p>
-            <code>${message.replaceAll('<', '&lt;').replaceAll('>', '&gt;')}</code>
-          </div>
-        </body>
-      </html>
-    `)}`
-  )
+  const baseUrl = resolveRendererUrl(process.env) || 'http://localhost:5173'
+  let url = `${baseUrl}#/dependency-check?message=${encodeURIComponent(message)}`
+  if (diagnosticsJson) {
+    url += `&diagnostics=${encodeURIComponent(diagnosticsJson)}`
+  }
+  errorWindow.loadURL(url)
 
   errorWindow.on('closed', () => {
     app.quit()
@@ -139,6 +122,23 @@ const bootstrapPranaMain = async (): Promise<void> => {
     console.warn('[Chakra] Failed to inject environment into Prana platform runtime', error)
   }
 
+  // Register IPC handlers BEFORE running safety checks
+  // This ensures the renderer can communicate with main process
+  try {
+    const { ipcMain } = await import('electron')
+    const { checkHostDependenciesStaged } = await import('./services/startupSecurity')
+    ipcMain.handle('app:check-host-dependencies', async () => {
+      const diagnostics = await checkHostDependenciesStaged()
+      return {
+        passed: diagnostics.every((d) => d.available),
+        diagnostics
+      }
+    })
+    console.info('[Chakra] Registered app:check-host-dependencies IPC handler')
+  } catch (error) {
+    console.warn('[Chakra] Could not register dependency check IPC:', error)
+  }
+
   // Pre-splash safety: validate startup env keys before renderer bootstrap.
   // SSH/auth verification is deferred to the splash screen flow
   // (app:bootstrap-host seeds SQLite, then startupOrchestrator verifies SSH).
@@ -148,7 +148,9 @@ const bootstrapPranaMain = async (): Promise<void> => {
 
   if (!startupSafety.allowed) {
     console.error('[Chakra] Unsafe startup blocked:', startupSafety)
-    void showUnsafeStartupWindow(startupSafety.message)
+    // Pass diagnostics via URL params so renderer can display stepper states
+    const diagnosticsJson = JSON.stringify(startupSafety.issues)
+    void showUnsafeStartupWindow(startupSafety.message, diagnosticsJson)
     return
   }
 
@@ -179,7 +181,8 @@ const bootstrapPranaMain = async (): Promise<void> => {
       const message = `Virtual drive initialization failed: ${mountResult.message}`
       if (driveControllerService.isFailClosedEnabled()) {
         console.error('[Chakra] Unsafe startup blocked:', message)
-        void showUnsafeStartupWindow(message)
+        const diagnostics = JSON.stringify([{ key: 'virtual-drive', message: mountResult.message }])
+        void showUnsafeStartupWindow(message, diagnostics)
         return
       }
 
