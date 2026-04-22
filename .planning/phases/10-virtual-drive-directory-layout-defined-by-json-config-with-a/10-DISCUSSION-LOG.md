@@ -73,3 +73,48 @@
 - Sub-directory structure inside `apps/chakra` or `apps/dhi`
 - Cleanup of orphaned directories (additive-only is intentional for now)
 - Per-folder quota monitoring
+
+---
+
+## Session 2 — 2026-04-22 (SQLite path implementation + drive security)
+
+**Areas discussed:** SQLite path implementation approach, drive encryption enforcement
+
+---
+
+## SQLite Path — Implementation Approach
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Option A — `getSqliteRoot()` function | New helper in `governanceRepoService.ts`, SQLite services use it, non-SQLite keeps `getAppDataRoot()` | |
+| Option B — `pranaRuntimeConfig.sqliteRoot` field | Add `sqliteRoot` to runtime config shape, propagate to all SQLite services via config | ✓ |
+
+**User's choice:** Option B — add `sqliteRoot` to `PranaRuntimeConfig`. Chakra sets `sqliteRoot = join(driveRoot, 'cache', 'sqlite')` before `bootstrapHost`.
+
+**Notes:** D-08 revised — implement the Prana SQLite path PR now as part of Phase 10-02, not deferred. Triggered by observing that SQLite files land in `live/` directly instead of `live/cache/sqlite/`.
+
+---
+
+## Drive Encryption & Locking
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| File PR only, implement later | Document the security issue | |
+| Implement enforcement now | Fix unmount-on-quit, failClosed default, weak-password warning | ✓ |
+
+**User's choice:** Implement now. Drive must be inaccessible without the app's encrypted key.
+
+**Specific failures identified:**
+- Drive can be opened/browsed without the app (rclone mount remains accessible after app exit)
+- `failClosed` defaults to `false` — plaintext fallback can silently activate in production
+- `cryptPassword` defaults to `'default'` placeholder — trivially guessable
+
+**Notes:** New companion PR `docs/pr/prana/virtual-drive-security-enforcement.md` covers D-12, D-13, D-14, D-15. Separate from the SQLite root PR.
+
+---
+
+## Updated Claude's Discretion
+
+- Exact placement of `setSqliteRoot` call in `bootstrapPranaMain`
+- Whether `getSqliteRoot()` helper lives in `governanceRepoService.ts` or a new file
+- Verification approach for rclone process kill on quit
