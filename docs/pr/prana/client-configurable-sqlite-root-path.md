@@ -1,6 +1,6 @@
 # Prana PR: Client-Configurable SQLite Root Path
 
-**Status:** Proposal
+**Status:** Partially implemented — `sqliteRoot` field exists in `PranaRuntimeConfig`; store services still use bare `mkdir` (see `sqlite-store-mkdir-eperm-fix.md`)
 **Owner repo:** Prana
 **Requested by:** Chakra (Phase 10 — Drive Layout JSON)
 

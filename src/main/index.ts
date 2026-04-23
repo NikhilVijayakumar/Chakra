@@ -8,7 +8,7 @@ import {
   loadWorkspaceEnvFile,
   resolveRendererUrl
 } from './services/runtimeEnv'
-import { verifyStartupSafety } from './services/startupSecurity'
+import { verifyStartupSafety, warnWeakVaultConfig } from './services/startupSecurity'
 import { setPranaPlatformRuntime } from 'prana/main/services/pranaPlatformRuntime'
 import { setPranaRuntimeConfig } from 'prana/main/services/pranaRuntimeConfig'
 
@@ -20,13 +20,20 @@ const registerDriveLifecycleHooks = (): void => {
   }
 
   driveLifecycleHooksRegistered = true
-  app.once('before-quit', () => {
+  app.once('before-quit', (event) => {
+    // Prevent the default quit so we can await dispose() before exiting.
+    // app.once ensures this handler runs only once, so the subsequent app.quit()
+    // call below does not re-trigger it.
+    event.preventDefault()
     void (async () => {
       try {
         const { driveControllerService } = await import('prana/main/services/driveControllerService')
         await driveControllerService.dispose()
+        console.info('[Chakra] Virtual drives ejected cleanly')
       } catch (error) {
         console.warn('[Chakra] Could not eject virtual drives during shutdown:', error)
+      } finally {
+        app.quit()
       }
     })()
   })
@@ -105,8 +112,8 @@ const bootstrapPranaMain = async (): Promise<void> => {
         specVersion: runtimeEnvValue('VAULT_SPEC_VERSION'),
         tempZipExtension: runtimeEnvValue('VAULT_TEMP_ZIP_EXT'),
         outputPrefix: runtimeEnvValue('VAULT_OUTPUT_PREFIX'),
-        archivePassword: runtimeEnvValue('VAULT_ARCHIVE_PASSWORD') || 'default',
-        archiveSalt: runtimeEnvValue('VAULT_ARCHIVE_SALT') || 'salt',
+        archivePassword: runtimeEnvValue('VAULT_ARCHIVE_PASSWORD'),
+        archiveSalt: runtimeEnvValue('VAULT_ARCHIVE_SALT'),
         kdfIterations: runtimeEnvValue('VAULT_KDF_ITERATIONS')
           ? parseInt(runtimeEnvValue('VAULT_KDF_ITERATIONS') ?? '600000')
           : 600000,
@@ -131,7 +138,13 @@ const bootstrapPranaMain = async (): Promise<void> => {
         // then breaks auth/status storage by pointing app data to an invalid root.
         // Keep production behavior fail-closed, but default dev to fallback storage
         // unless explicitly overridden via CHAKRA_VIRTUAL_DRIVE_ENABLED/DHI_...
-        enabled: runtimeBooleanValue('VIRTUAL_DRIVE_ENABLED') ?? !isDevelopment
+        enabled: runtimeBooleanValue('VIRTUAL_DRIVE_ENABLED') ?? !isDevelopment,
+        // Forward the generated drive key directly to the crypt remote so Prana
+        // does not need to fall back through the vault → archivePassword chain.
+        systemCryptPassword: runtimeEnvValue('VAULT_ARCHIVE_PASSWORD'),
+        // Fail-closed in production: mount failure blocks startup rather than
+        // silently falling back to unencrypted local storage.
+        failClosed: runtimeBooleanValue('VIRTUAL_DRIVE_FAIL_CLOSED') ?? !isDevelopment
       }
     }
 
@@ -173,6 +186,8 @@ const bootstrapPranaMain = async (): Promise<void> => {
     return
   }
 
+  warnWeakVaultConfig(process.env)
+
   // css-tree's CJS build reads ../data/patch.json relative to bundled chunks.
   // In dev/runtime bundling that file may be absent under out/main/data.
   try {
@@ -209,6 +224,19 @@ const bootstrapPranaMain = async (): Promise<void> => {
       try {
         const driveRoot = driveControllerService.getSystemDataRoot()
         const created = await driveLayoutService.ensureDirectories(driveRoot)
+
+        // Route SQLite to S:\cache\sqlite (matching drive-layout.json) so that
+        // authStoreService.mkdir(getSqliteRoot()) never targets the bare drive root.
+        // This works around authStoreService using bare mkdir() without the WinFsp
+        // EPERM guard that mkdirSafe() provides (pending Prana fix in authStoreService.ts).
+        try {
+          const { setSqliteRootOverride } = await import('prana/main/services/governanceRepoService')
+          setSqliteRootOverride(join(driveRoot, 'cache', 'sqlite'))
+          console.info('[Chakra] SQLite root pinned to cache/sqlite under drive root')
+        } catch (sqliteErr) {
+          console.warn('[Chakra] Could not pin SQLite root override:', sqliteErr)
+        }
+
         return { ok: true, driveRoot, createdCount: created.length }
       } catch (err) {
         console.warn('[Chakra] ensureDirectories failed (non-fatal):', err)

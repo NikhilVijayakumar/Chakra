@@ -21,7 +21,8 @@
     "test": "vitest run --coverage",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "generate:index": "node scripts/generate-index.cjs"
+    "generate:index": "node scripts/generate-index.cjs",
+    "generate:drive-key": "node scripts/generate-drive-key.cjs"
   },
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.2",

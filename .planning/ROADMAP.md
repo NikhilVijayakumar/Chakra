@@ -95,6 +95,17 @@ Plans:
 - [x] 09-01-PLAN.md — Main-process: Extend verifyStartupSafety for progressive results + IPC + updated blocking window.
 - [x] 09-02-PLAN.md — Renderer: Create DependencyStepper component + viewmodel + integrate into blocking flow.
 
+### Phase 10: virtual drive directory layout defined by json config with apps cache and data sections supporting sub-objects prana integration or pr if needed
+
+**Goal:** Wire the JSON-driven virtual-drive directory layout (apps/cache/data) into Chakra's startup so that after the system drive mounts, the folder tree described by drive-layout.json is materialised before any read/write operation; implement Prana SQLite configurable root path and drive security enforcement.
+**Requirements**: D-01, D-03, D-04, D-07, D-08, D-09, D-10, D-11, D-12, D-13, D-14, D-15
+**Depends on:** Phase 9
+**Plans:** 2 plans
+
+Plans:
+- [x] 10-01-PLAN.md - Update drive-layout.json to apps/cache/data schema, register chakra:ensure-drive-layout IPC handler in main, expose ensureDriveLayout on the preload bridge, and invoke it from the splash viewmodel immediately after bootstrapHost resolves.
+- [ ] 10-02-PLAN.md - Prana SQLite root config (sqliteRoot in PranaRuntimeConfig, getSqliteRoot helper, 4 store services migrated) + drive security (failClosed default true, weak-password warning) + Chakra wiring + PR docs updated to Implemented.
+
 ---
 
 ## Phase Summary

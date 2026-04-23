@@ -110,6 +110,8 @@ const REQUIRED_STARTUP_KEYS = [
 
 const PLACEHOLDER_PATTERNS = [/replace_with/i, /placeholder/i, /change_me/i, /^your_.+/i, /^todo$/i]
 
+const WEAK_VAULT_PASSWORDS = new Set(['default', 'password', 'changeme', 'prana', 'salt', 'secret', '12345678', 'letmein'])
+
 const isPlaceholderValue = (value: string): boolean => {
   return PLACEHOLDER_PATTERNS.some((pattern) => pattern.test(value))
 }
@@ -120,6 +122,28 @@ const isPositiveIntegerString = (value: string): boolean => {
 
 export const reportSecurityError = (operation: string, error: unknown): void => {
   console.error(`[Chakra] ${operation} failed:`, error)
+}
+
+export const warnWeakVaultConfig = (env: NodeJS.ProcessEnv = process.env): void => {
+  const getVal = (key: string): string | undefined =>
+    readMainViteEnvValue(env, key) ?? readMainViteEnvValue(env, key.replace('CHAKRA_', 'DHI_'))
+
+  const password = getVal('CHAKRA_VAULT_ARCHIVE_PASSWORD')
+  const salt = getVal('CHAKRA_VAULT_ARCHIVE_SALT')
+
+  if (password && WEAK_VAULT_PASSWORDS.has(password.toLowerCase())) {
+    console.warn(
+      '[Chakra] SECURITY WARNING: VAULT_ARCHIVE_PASSWORD is a known weak value. ' +
+      'Run `npm run generate:drive-key` to generate a strong key.'
+    )
+  }
+
+  if (salt && WEAK_VAULT_PASSWORDS.has(salt.toLowerCase())) {
+    console.warn(
+      '[Chakra] SECURITY WARNING: VAULT_ARCHIVE_SALT is a known weak value. ' +
+      'Run `npm run generate:drive-key` to generate a strong salt.'
+    )
+  }
 }
 
 export const validateRequiredStartupConfig = (

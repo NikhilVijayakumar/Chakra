@@ -1,6 +1,6 @@
 import { mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
-import driveLayoutConfig from '../config/drive-layout.json'
+import driveLayoutConfig from '../../../config/drive-layout.json'
 
 export interface DriveQuotaConfig {
   maxStorageMb: number
