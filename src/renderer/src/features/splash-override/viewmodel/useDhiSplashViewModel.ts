@@ -10,17 +10,13 @@ export interface SplashStage {
   detailMessage?: string
 }
 
-/**
- * Detects whether the Electron preload bridge is available.
- * In browser-only mode (localhost:5173 without Electron shell),
- * window.api will be undefined.
- */
 const hasElectronBridge = (): boolean =>
   typeof window !== 'undefined' && typeof (window as any).api?.app?.bootstrapHost === 'function'
 
 export const useDhiSplashViewModel = (onComplete: () => void, onSshFailure: () => void) => {
   const [stages, setStages] = useState<SplashStage[]>([
     { id: 'runtime', title: 'Platform Runtime Configuration', status: 'pending' },
+    { id: 'sheets', title: 'Syncing Employee Directory from Google Sheets', status: 'pending' },
     { id: 'ssh', title: 'Governance Repository Verification', status: 'pending' },
     { id: 'vault', title: 'Mounting Local Encrypted Vault', status: 'pending' },
     { id: 'gateway', title: 'Probing Local AI Model Gateway', status: 'pending' }
@@ -50,19 +46,17 @@ export const useDhiSplashViewModel = (onComplete: () => void, onSshFailure: () =
       let currentIndex = startingIndex
 
       try {
-        // ──── Step 0: Platform Runtime ────
+        // ──── Step 0: Platform Runtime (bootstrap + drive layout) ────
         if (currentIndex === 0) {
           updateStage(currentIndex, { status: 'loading', errorMessage: undefined })
 
           if (!isElectron) {
-            // Browser dev mode — no IPC, skip gracefully
             updateStage(currentIndex, {
               status: 'skipped',
               detailMessage: 'Browser mode — Electron IPC unavailable.'
             })
           } else {
             try {
-              // Resolve bootstrap config from preload bridge, matching Prana's expected contract
               let config: Record<string, unknown> = {}
               try {
                 if ((window as any).api?.app?.getBootstrapConfig) {
@@ -72,14 +66,13 @@ export const useDhiSplashViewModel = (onComplete: () => void, onSshFailure: () =
                   }
                 }
               } catch {
-                // Config resolution is best-effort; bootstrapHost will use setPranaRuntimeConfig values
+                // best-effort
               }
 
               const startup = await (window as any).api.app.bootstrapHost({ config })
 
               if (startup.overallStatus === 'BLOCKED') {
                 const blockedStage = startup.stages?.find((s: any) => s.status === 'BLOCKED')
-                // BLOCKED is non-fatal for splash — show warning but continue to login
                 updateStage(currentIndex, {
                   status: 'success',
                   detailMessage: `Warning: ${blockedStage?.message ?? 'Some startup stages blocked.'}`
@@ -97,17 +90,16 @@ export const useDhiSplashViewModel = (onComplete: () => void, onSshFailure: () =
               })
               setIsFatalActionableError(true)
               isExecutingRef.current = false
-              return // Stop — allow retry
+              return
             }
 
-            // Phase 10: ensure virtual drive directory layout exists.
-            // Safe to await — non-fatal; main-process handler catches its own errors.
+            // Ensure virtual drive directory layout exists and init SQLite employee store.
+            // Must run before sheets sync so the employee store path is set correctly.
             try {
               if ((window as any).api?.app?.ensureDriveLayout) {
                 await (window as any).api.app.ensureDriveLayout()
               }
             } catch (layoutErr) {
-              // Non-fatal: do not surface to user; startup continues to SSH.
               console.warn('[Chakra] ensureDriveLayout invoke failed:', layoutErr)
             }
           }
@@ -116,8 +108,54 @@ export const useDhiSplashViewModel = (onComplete: () => void, onSshFailure: () =
           if (isMountedRef.current) setCurrentStepIndex(currentIndex)
         }
 
-        // ──── Step 1: SSH Verification ────
+        // ──── Step 1: Google Sheets — Employee Sync ────
         if (currentIndex === 1) {
+          updateStage(currentIndex, { status: 'loading', errorMessage: undefined })
+
+          if (!isElectron) {
+            updateStage(currentIndex, {
+              status: 'skipped',
+              detailMessage: 'Browser mode — sheets sync skipped.'
+            })
+          } else {
+            try {
+              const gs = (window.api as any).googleSheets
+              const authStatus = await gs?.getAuthStatus?.()
+
+              if (!authStatus?.authenticated) {
+                updateStage(currentIndex, {
+                  status: 'skipped',
+                  detailMessage: 'Google Sheets not connected — using cached employee data.'
+                })
+              } else {
+                const result = await gs.sync()
+                if (result?.success) {
+                  updateStage(currentIndex, {
+                    status: 'success',
+                    detailMessage: `Synced ${result.departmentsLoaded} departments, ${result.designationsLoaded} designations, ${result.employeesLoaded} employees.`
+                  })
+                } else {
+                  const firstError = result?.errors?.[0] ?? 'Sync failed.'
+                  updateStage(currentIndex, {
+                    status: 'skipped',
+                    detailMessage: `Employee sync failed — ${firstError} Using cached data.`
+                  })
+                }
+              }
+            } catch (err: any) {
+              updateStage(currentIndex, {
+                status: 'skipped',
+                detailMessage: `Sheets sync unavailable: ${err?.message ?? 'unknown error'}. Using cached data.`
+              })
+            }
+          }
+
+          currentIndex++
+          if (isMountedRef.current) setCurrentStepIndex(currentIndex)
+        }
+
+        // ──── Step 2: SSH Verification ────
+        if (currentIndex === 2) {
           updateStage(currentIndex, { status: 'loading', errorMessage: undefined })
 
           if (!isElectron) {
@@ -146,7 +184,6 @@ export const useDhiSplashViewModel = (onComplete: () => void, onSshFailure: () =
                   errorMessage: sshResult.sshMessage ?? 'SSH access denied.'
                 })
                 isExecutingRef.current = false
-                // SSH failure auto-redirects to access-denied
                 setTimeout(onSshFailure, 1500)
                 return
               }
@@ -170,10 +207,9 @@ export const useDhiSplashViewModel = (onComplete: () => void, onSshFailure: () =
           if (isMountedRef.current) setCurrentStepIndex(currentIndex)
         }
 
-        // ──── Step 2: Vault Mount ────
-        if (currentIndex === 2) {
+        // ──── Step 3: Vault Mount ────
+        if (currentIndex === 3) {
           updateStage(currentIndex, { status: 'loading', errorMessage: undefined })
-          // Brief simulated wait for vault readiness
           await new Promise((r) => setTimeout(r, 500))
           updateStage(currentIndex, {
             status: 'success',
@@ -184,8 +220,8 @@ export const useDhiSplashViewModel = (onComplete: () => void, onSshFailure: () =
           if (isMountedRef.current) setCurrentStepIndex(currentIndex)
         }
 
-        // ──── Step 3: Gateway Probe ────
-        if (currentIndex === 3) {
+        // ──── Step 4: Gateway Probe ────
+        if (currentIndex === 4) {
           updateStage(currentIndex, { status: 'loading', errorMessage: undefined })
 
           if (!isElectron) {
@@ -209,7 +245,6 @@ export const useDhiSplashViewModel = (onComplete: () => void, onSshFailure: () =
                 })
               }
             } catch {
-              // Gateway is non-blocking — mark as warning-style success
               updateStage(currentIndex, {
                 status: 'success',
                 detailMessage: 'Gateway probe failed — proceeding anyway.'
@@ -221,7 +256,7 @@ export const useDhiSplashViewModel = (onComplete: () => void, onSshFailure: () =
           if (isMountedRef.current) setCurrentStepIndex(currentIndex)
         }
 
-        // ──── All Done — navigate ────
+        // ──── All Done ────
         isExecutingRef.current = false
         setTimeout(() => {
           if (isMountedRef.current) onComplete()

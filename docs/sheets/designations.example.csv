@@ -1,0 +1,17 @@
+designation_id,designation_name,status
+DES001,Director,active
+DES002,Chief Executive Officer,active
+DES003,Engineering Manager,active
+DES004,Senior Software Engineer,active
+DES005,Software Engineer,active
+DES006,Operations Manager,active
+DES007,Operations Analyst,active
+DES008,Marketing Manager,active
+DES009,Marketing Specialist,active
+DES010,Finance Manager,active
+DES011,Accountant,active
+DES012,HR Manager,active
+DES013,HR Executive,active
+DES014,Sales Manager,active
+DES015,Sales Executive,active
+DES016,Legal Counsel,inactive

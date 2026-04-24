@@ -30,8 +30,8 @@ export const LoginContainerOverride: FC = () => {
     setError(null)
 
     try {
-      // Invoke the IPC handler directly to avoid Prana's LoginContainer interference
-      const result: AuthLoginResult = await window.api.auth.login(email, password)
+      const rawResult = await (window.api as any).auth.loginWithSheets(email, password)
+      const result = rawResult as Omit<AuthLoginResult, 'reason'> & { reason?: string }
 
       console.log('[LoginOverride] Login response:', {
         success: result.success,
@@ -41,9 +41,12 @@ export const LoginContainerOverride: FC = () => {
       })
 
       if (!result.success) {
-        const errorMessage = result.reason === 'email_mismatch' 
-          ? 'Email mismatch' 
-          : 'Invalid credentials'
+        const errorMessage =
+          result.reason === 'no_employees'
+            ? 'Employee directory not loaded. Connect Google Sheets and restart.'
+            : result.reason === 'account_inactive'
+            ? 'Account is inactive.'
+            : 'Invalid credentials'
         console.warn('[LoginOverride] Login failed:', { reason: result.reason, errorMessage })
         setError(errorMessage)
         return

@@ -1,0 +1,9 @@
+department_id,department_name,status
+DEPT001,Executive,active
+DEPT002,Engineering,active
+DEPT003,Operations,active
+DEPT004,Marketing,active
+DEPT005,Finance,active
+DEPT006,Human Resources,active
+DEPT007,Sales,active
+DEPT008,Legal,inactive

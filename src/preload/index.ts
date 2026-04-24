@@ -41,10 +41,20 @@ const api = {
     getStatus: () => electronAPI.ipcRenderer.invoke('auth:get-status'),
     login: (email: string, password: string) =>
       electronAPI.ipcRenderer.invoke('auth:login', { email, password }),
+    loginWithSheets: (email: string, password: string) =>
+      electronAPI.ipcRenderer.invoke('chakra:auth-login', { email, password }),
     forgotPassword: (email: string) =>
       electronAPI.ipcRenderer.invoke('auth:forgot-password', { email }),
     resetPassword: (newPassword: string) =>
       electronAPI.ipcRenderer.invoke('auth:reset-password', { newPassword })
+  },
+  googleSheets: {
+    getAuthStatus: () => electronAPI.ipcRenderer.invoke('chakra:google-auth-status'),
+    startAuth: () => electronAPI.ipcRenderer.invoke('chakra:google-auth-start'),
+    revokeAuth: () => electronAPI.ipcRenderer.invoke('chakra:google-auth-revoke'),
+    setEmployeeSheetId: (employeeSheetId: string) =>
+      electronAPI.ipcRenderer.invoke('chakra:sheets-employee-sheet-set', { employee_sheet_id: employeeSheetId }),
+    sync: () => electronAPI.ipcRenderer.invoke('chakra:sheets-sync')
   },
   settings: {
     load: () => electronAPI.ipcRenderer.invoke('settings:load'),

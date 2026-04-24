@@ -1,0 +1,5 @@
+employee_id,full_name,email,password_hash,role,department_id,designation_id,status
+EMP001,Swathymol P S,swathysalilakumar@gmail.com,$2b$10$gUPfHEV1gpZ5npqQze1v9O7KQAD955r/EPm4BNRkUREu0Ud3p2Ye.,director,DEPT001,DES001,active
+EMP002,Nikhil Vijayakumar,nikhil.vijaykumar@gmail.com,$2b$10$examplehashfordemopurposesonly1234567890abcdef.,manager,DEPT002,DES003,active
+EMP003,Jane Smith,jane.smith@example.com,$2b$10$examplehashfordemopurposesonly1234567890abcdef.,staff,DEPT003,DES007,active
+EMP004,John Doe,john.doe@example.com,$2b$10$examplehashfordemopurposesonly1234567890abcdef.,staff,DEPT004,DES009,inactive

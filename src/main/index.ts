@@ -231,8 +231,11 @@ const bootstrapPranaMain = async (): Promise<void> => {
         // EPERM guard that mkdirSafe() provides (pending Prana fix in authStoreService.ts).
         try {
           const { setSqliteRootOverride } = await import('prana/main/services/governanceRepoService')
-          setSqliteRootOverride(join(driveRoot, 'cache', 'sqlite'))
+          const sqliteRoot = join(driveRoot, 'cache', 'sqlite')
+          setSqliteRootOverride(sqliteRoot)
           console.info('[Chakra] SQLite root pinned to cache/sqlite under drive root')
+
+          console.info('[Chakra] SQLite root set; employee store will lazy-init on first use')
         } catch (sqliteErr) {
           console.warn('[Chakra] Could not pin SQLite root override:', sqliteErr)
         }
@@ -246,6 +249,105 @@ const bootstrapPranaMain = async (): Promise<void> => {
     console.info('[Chakra] Registered chakra:ensure-drive-layout IPC handler')
   } catch (error) {
     console.warn('[Chakra] Could not register chakra:ensure-drive-layout IPC:', error)
+  }
+
+  // Google Sheets integration IPC handlers
+  try {
+    const { ipcMain } = await import('electron')
+    const googleAuth = await import('./services/googleAuthService')
+    const sheetsSync = await import('./services/sheetsSyncService')
+    const employeeStore = await import('./services/employeeStoreService')
+
+    ipcMain.handle('chakra:google-auth-status', async () => {
+      const clientId = runtimeEnvValue('GOOGLE_CLIENT_ID') ?? ''
+      const clientSecret = runtimeEnvValue('GOOGLE_CLIENT_SECRET') ?? ''
+      if (!clientId || !clientSecret) {
+        return { authenticated: false, error: 'GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET not configured.' }
+      }
+      return googleAuth.getAuthStatus(clientId, clientSecret)
+    })
+
+    ipcMain.handle('chakra:google-auth-start', async () => {
+      const clientId = runtimeEnvValue('GOOGLE_CLIENT_ID') ?? ''
+      const clientSecret = runtimeEnvValue('GOOGLE_CLIENT_SECRET') ?? ''
+      if (!clientId || !clientSecret) {
+        return { success: false, error: 'GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET not configured in .env.' }
+      }
+      return googleAuth.runOAuthFlow(clientId, clientSecret)
+    })
+
+    ipcMain.handle('chakra:google-auth-revoke', async () => {
+      await googleAuth.clearStoredAuth()
+      return { success: true }
+    })
+
+    ipcMain.handle('chakra:sheets-employee-sheet-set', async (_event, payload: { employee_sheet_id: string }) => {
+      await googleAuth.saveEmployeeSheetId(payload.employee_sheet_id)
+      return { success: true }
+    })
+
+    ipcMain.handle('chakra:sheets-sync', async () => {
+      const clientId = runtimeEnvValue('GOOGLE_CLIENT_ID') ?? ''
+      const clientSecret = runtimeEnvValue('GOOGLE_CLIENT_SECRET') ?? ''
+
+      if (!clientId || !clientSecret) {
+        return { success: false, errors: ['Google OAuth credentials not configured in .env.'], employeesLoaded: 0, departmentsLoaded: 0, designationsLoaded: 0 }
+      }
+
+      const accessToken = await googleAuth.getValidAccessToken(clientId, clientSecret)
+      if (!accessToken) {
+        return { success: false, errors: ['Not authenticated with Google. Run chakra:google-auth-start first.'], employeesLoaded: 0, departmentsLoaded: 0, designationsLoaded: 0 }
+      }
+
+      const stored = await googleAuth.getAuthStatus(clientId, clientSecret)
+      const spreadsheetId = stored?.employee_sheet_id ?? runtimeEnvValue('GOOGLE_EMPLOYEE_SHEET_ID') ?? ''
+
+      if (!spreadsheetId) {
+        return { success: false, errors: ['Spreadsheet ID not configured. Set MAIN_VITE_CHAKRA_GOOGLE_EMPLOYEE_SHEET_ID in .env.'], employeesLoaded: 0, departmentsLoaded: 0, designationsLoaded: 0 }
+      }
+
+      return sheetsSync.syncHrFromSheets(accessToken, spreadsheetId)
+    })
+
+    ipcMain.handle('chakra:auth-login', async (_event, payload: { email: string; password: string }) => {
+      const { email, password } = payload
+
+      const populated = await employeeStore.hasEmployees()
+      if (!populated) {
+        return {
+          success: false,
+          reason: 'no_employees',
+          directorName: null,
+          email: null,
+          isFirstInstall: false,
+          sessionToken: null
+        }
+      }
+
+      const result = await employeeStore.loginEmployee(email, password)
+      if (result.success) {
+        return {
+          success: true,
+          directorName: result.employee?.full_name ?? null,
+          email: result.employee?.email ?? null,
+          isFirstInstall: false,
+          sessionToken: result.sessionToken ?? null
+        }
+      }
+
+      return {
+        success: false,
+        reason: result.reason === 'invalid_password' ? 'invalid_credentials' : result.reason,
+        directorName: null,
+        email: null,
+        isFirstInstall: false,
+        sessionToken: null
+      }
+    })
+
+    console.info('[Chakra] Registered Google Sheets IPC handlers')
+  } catch (error) {
+    console.warn('[Chakra] Could not register Google Sheets IPC handlers:', error)
   }
 
   // Ensure SQLite runtime config snapshot exists.
