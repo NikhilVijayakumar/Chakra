@@ -263,7 +263,7 @@ export interface EmployeeLoginResult {
 export const loginEmployee = async (email: string, password: string): Promise<EmployeeLoginResult> => {
   const db = await getDb()
   const result = db.exec(
-    'SELECT employee_id, full_name, email, password_hash, role, department, status FROM employees WHERE email = ?',
+    'SELECT employee_id, full_name, email, password_hash, role, department_id, designation_id, status FROM employees WHERE email = ?',
     [email.trim().toLowerCase()]
   )
 

@@ -1457,8 +1457,34 @@ interface HostDependencyDiagnostic {
   message: string
 }
 
+interface GoogleSheetsAuthStatus {
+  authenticated: boolean
+  employee_sheet_id?: string
+  error?: string
+}
+
+interface GoogleSheetsOAuthResult {
+  success: boolean
+  error?: string
+}
+
+interface HrSyncResult {
+  success: boolean
+  departmentsLoaded: number
+  designationsLoaded: number
+  employeesLoaded: number
+  errors: string[]
+}
+
 interface DhiApi {
   [key: string]: unknown
+  googleSheets: {
+    getAuthStatus: () => Promise<GoogleSheetsAuthStatus>
+    startAuth: () => Promise<GoogleSheetsOAuthResult>
+    revokeAuth: () => Promise<void>
+    setEmployeeSheetId: (employeeSheetId: string) => Promise<void>
+    sync: () => Promise<HrSyncResult>
+  }
   app: {
     checkHostDependencies: () => Promise<{ passed: boolean; diagnostics: HostDependencyDiagnostic[] }>
     getBootstrapConfig: () => Promise<Record<string, unknown>>

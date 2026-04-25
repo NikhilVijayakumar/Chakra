@@ -13,7 +13,8 @@ export interface SheetConfig {
 
 export interface SyncResult {
   success: boolean
-  configKeysLoaded?: number
+  departmentsLoaded?: number
+  designationsLoaded?: number
   employeesLoaded?: number
   errors?: string[]
 }
@@ -39,13 +40,11 @@ export const useGoogleSheetsSettingsViewModel = () => {
     if (!gs) return
     setIsLoadingStatus(true)
     try {
-      const [status, config] = await Promise.all([gs.getAuthStatus(), gs.getSheetConfig()])
+      const status = await gs.getAuthStatus()
       setAuthStatus(status ?? { authenticated: false })
-      if (config) {
-        setSheetConfig({
-          config_sheet_id: config.config_sheet_id ?? '',
-          employee_sheet_id: config.employee_sheet_id ?? ''
-        })
+      // employee_sheet_id is stored alongside OAuth tokens in SQLite
+      if (status?.employee_sheet_id) {
+        setSheetConfig((prev) => ({ ...prev, employee_sheet_id: status.employee_sheet_id ?? '' }))
       }
     } catch (err: any) {
       setError(err?.message ?? 'Failed to load Google Sheets status.')
@@ -97,7 +96,9 @@ export const useGoogleSheetsSettingsViewModel = () => {
     setIsSavingConfig(true)
     setError(null)
     try {
-      await gs.setSheetConfig(sheetConfig)
+      if (sheetConfig.employee_sheet_id) {
+        await gs.setEmployeeSheetId(sheetConfig.employee_sheet_id)
+      }
       setSuccessMessage('Sheet IDs saved.')
     } catch (err: any) {
       setError(err?.message ?? 'Failed to save sheet configuration.')
@@ -116,7 +117,7 @@ export const useGoogleSheetsSettingsViewModel = () => {
       setSyncResult(result)
       if (result?.success) {
         setSuccessMessage(
-          `Sync complete — ${result.configKeysLoaded ?? 0} config keys, ${result.employeesLoaded ?? 0} employees loaded.`
+          `Sync complete — ${result.departmentsLoaded ?? 0} departments, ${result.designationsLoaded ?? 0} designations, ${result.employeesLoaded ?? 0} employees loaded.`
         )
       } else {
         const firstError = result?.errors?.[0] ?? 'Sync failed.'

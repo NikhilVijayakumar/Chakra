@@ -122,13 +122,23 @@ export const useDhiSplashViewModel = (onComplete: () => void, onSshFailure: () =
               const gs = (window.api as any).googleSheets
               const authStatus = await gs?.getAuthStatus?.()
 
-              if (!authStatus?.authenticated) {
+              if (authStatus?.error) {
+                // Credentials not configured in .env — warn but don't block startup
+                console.warn('[Chakra] Google Sheets credentials not configured:', authStatus.error)
                 updateStage(currentIndex, {
                   status: 'skipped',
-                  detailMessage: 'Google Sheets not connected — using cached employee data.'
+                  detailMessage: `Google Sheets not configured: ${authStatus.error} Set MAIN_VITE_CHAKRA_GOOGLE_CLIENT_ID and MAIN_VITE_CHAKRA_GOOGLE_CLIENT_SECRET in .env, then run OAuth via chakra:google-auth-start.`
+                })
+              } else if (!authStatus?.authenticated) {
+                // Credentials exist but OAuth not completed yet
+                console.warn('[Chakra] Google Sheets not authenticated — no refresh token stored. Run chakra:google-auth-start to complete OAuth.')
+                updateStage(currentIndex, {
+                  status: 'skipped',
+                  detailMessage: 'Google account not connected — using cached employee data. Run the Google OAuth flow to enable live sync.'
                 })
               } else {
                 const result = await gs.sync()
+                console.info('[Chakra] Sheets sync result:', result)
                 if (result?.success) {
                   updateStage(currentIndex, {
                     status: 'success',
@@ -136,6 +146,7 @@ export const useDhiSplashViewModel = (onComplete: () => void, onSshFailure: () =
                   })
                 } else {
                   const firstError = result?.errors?.[0] ?? 'Sync failed.'
+                  console.warn('[Chakra] Sheets sync failed:', result?.errors)
                   updateStage(currentIndex, {
                     status: 'skipped',
                     detailMessage: `Employee sync failed — ${firstError} Using cached data.`
@@ -143,6 +154,7 @@ export const useDhiSplashViewModel = (onComplete: () => void, onSshFailure: () =
                 }
               }
             } catch (err: any) {
+              console.warn('[Chakra] Sheets sync threw:', err)
               updateStage(currentIndex, {
                 status: 'skipped',
                 detailMessage: `Sheets sync unavailable: ${err?.message ?? 'unknown error'}. Using cached data.`
