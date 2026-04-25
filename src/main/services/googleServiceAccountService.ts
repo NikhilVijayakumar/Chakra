@@ -3,7 +3,7 @@ import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
-const SCOPES = 'https://www.googleapis.com/auth/spreadsheets.readonly'
+const SCOPES = 'https://www.googleapis.com/auth/spreadsheets'
 
 interface ServiceAccountKey {
   client_email: string

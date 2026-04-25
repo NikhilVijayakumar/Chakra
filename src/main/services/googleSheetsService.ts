@@ -31,92 +31,99 @@ const sheetsGet = async (url: string, accessToken: string): Promise<unknown> => 
   return res.json()
 }
 
-const parseValues = (data: unknown): string[][] => {
-  return (data as { values?: string[][] })?.values ?? []
-}
+const parseValues = (data: unknown): string[][] =>
+  (data as { values?: string[][] })?.values ?? []
 
-const headerIndex = (header: string[], name: string): number =>
+const col = (header: string[], name: string): number =>
   header.indexOf(name.trim().toLowerCase())
+
+// ── Department (tab: "Department", columns: ID | Name | Status) ───────────
 
 export const readDepartmentSheet = async (
   spreadsheetId: string,
   accessToken: string,
-  sheetName = 'Departments'
+  sheetName = 'Department'
 ): Promise<DepartmentRow[]> => {
   const range = encodeURIComponent(`${sheetName}!A:C`)
   const rows = parseValues(await sheetsGet(`${SHEETS_BASE}/${spreadsheetId}/values/${range}`, accessToken))
   if (rows.length < 2) return []
 
-  const header = rows[0].map((h) => h.trim().toLowerCase())
-  const did = headerIndex(header, 'department_id')
-  const dname = headerIndex(header, 'department_name')
-  const st = headerIndex(header, 'status')
+  const header = rows[0].map(h => h.trim().toLowerCase())
+  const id    = col(header, 'id')
+  const name  = col(header, 'name')
+  const st    = col(header, 'status')
 
   return rows
     .slice(1)
-    .filter((row) => row[did]?.trim())
-    .map((row) => ({
-      department_id: row[did].trim(),
-      department_name: row[dname]?.trim() ?? '',
-      status: row[st]?.trim().toLowerCase() ?? 'active'
+    .filter(row => row[id]?.trim())
+    .map(row => ({
+      department_id:   row[id].trim(),
+      department_name: row[name]?.trim() ?? '',
+      status:          row[st]?.trim().toLowerCase() ?? 'active'
     }))
 }
+
+// ── Designation (tab: "Designation", columns: ID | Name | Status) ─────────
 
 export const readDesignationSheet = async (
   spreadsheetId: string,
   accessToken: string,
-  sheetName = 'Designations'
+  sheetName = 'Designation'
 ): Promise<DesignationRow[]> => {
   const range = encodeURIComponent(`${sheetName}!A:C`)
   const rows = parseValues(await sheetsGet(`${SHEETS_BASE}/${spreadsheetId}/values/${range}`, accessToken))
   if (rows.length < 2) return []
 
-  const header = rows[0].map((h) => h.trim().toLowerCase())
-  const did = headerIndex(header, 'designation_id')
-  const dname = headerIndex(header, 'designation_name')
-  const st = headerIndex(header, 'status')
+  const header = rows[0].map(h => h.trim().toLowerCase())
+  const id    = col(header, 'id')
+  const name  = col(header, 'name')
+  const st    = col(header, 'status')
 
   return rows
     .slice(1)
-    .filter((row) => row[did]?.trim())
-    .map((row) => ({
-      designation_id: row[did].trim(),
-      designation_name: row[dname]?.trim() ?? '',
-      status: row[st]?.trim().toLowerCase() ?? 'active'
+    .filter(row => row[id]?.trim())
+    .map(row => ({
+      designation_id:   row[id].trim(),
+      designation_name: row[name]?.trim() ?? '',
+      status:           row[st]?.trim().toLowerCase() ?? 'active'
     }))
 }
+
+// ── Employee (tab: "Employee", columns: ID | Name | email | password_hash |
+//             department_id | designation_id | status)
+//   Note: no "role" column in the sheet — defaults to 'staff' ──────────────
 
 export const readEmployeeSheet = async (
   spreadsheetId: string,
   accessToken: string,
-  sheetName = 'Employees'
+  sheetName = 'Employee'
 ): Promise<EmployeeRow[]> => {
   const range = encodeURIComponent(`${sheetName}!A:H`)
   const rows = parseValues(await sheetsGet(`${SHEETS_BASE}/${spreadsheetId}/values/${range}`, accessToken))
   if (rows.length < 2) return []
 
-  const header = rows[0].map((h) => h.trim().toLowerCase())
-  const eid = headerIndex(header, 'employee_id')
-  const fname = headerIndex(header, 'full_name')
-  const em = headerIndex(header, 'email')
-  const ph = headerIndex(header, 'password_hash')
-  const ro = headerIndex(header, 'role')
-  const dep = headerIndex(header, 'department_id')
-  const des = headerIndex(header, 'designation_id')
-  const st = headerIndex(header, 'status')
+  const header = rows[0].map(h => h.trim().toLowerCase())
+  const id    = col(header, 'id')
+  const name  = col(header, 'name')
+  const em    = col(header, 'email')
+  const ph    = col(header, 'password_hash')
+  const role  = col(header, 'role')
+  const dep   = col(header, 'department_id')
+  const des   = col(header, 'designation_id')
+  const st    = col(header, 'status')
 
   return rows
     .slice(1)
-    .filter((row) => row[em]?.trim())
-    .map((row) => ({
-      employee_id: row[eid]?.trim() ?? '',
-      full_name: row[fname]?.trim() ?? '',
-      email: row[em].trim().toLowerCase(),
-      password_hash: row[ph]?.trim() ?? '',
-      role: row[ro]?.trim() ?? 'staff',
-      department_id: row[dep]?.trim() ?? '',
+    .filter(row => row[em]?.trim())
+    .map(row => ({
+      employee_id:    row[id]?.trim() ?? '',
+      full_name:      row[name]?.trim() ?? '',
+      email:          row[em].trim().toLowerCase(),
+      password_hash:  row[ph]?.trim() ?? '',
+      role:           role >= 0 ? (row[role]?.trim() ?? 'staff') : 'staff',
+      department_id:  row[dep]?.trim() ?? '',
       designation_id: row[des]?.trim() ?? '',
-      status: row[st]?.trim().toLowerCase() ?? 'active'
+      status:         row[st]?.trim().toLowerCase() ?? 'active'
     }))
-    .filter((e) => e.status === 'active')
+    .filter(e => e.status === 'active')
 }
