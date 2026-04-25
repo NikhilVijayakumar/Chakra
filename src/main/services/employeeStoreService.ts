@@ -107,7 +107,7 @@ const getDb = async (): Promise<Database> => {
   return dbPromise
 }
 
-// ── Google OAuth token storage ─────────────────────────────────────────────
+// ── Google Sheets sheet ID storage ────────────────────────────────────────
 
 const authGet = async (key: string): Promise<string | null> => {
   const db = await getDb()
@@ -130,59 +130,11 @@ const authSet = async (key: string, value: string): Promise<void> => {
   })
 }
 
-const authDel = async (key: string): Promise<void> => {
-  await queueWrite(async () => {
-    const db = await getDb()
-    db.run('DELETE FROM google_auth WHERE key = ?', [key])
-    await persistDb(db)
-  })
-}
+export const getStoredSheetId = async (): Promise<string | null> =>
+  authGet('employee_sheet_id')
 
-export interface StoredGoogleAuth {
-  access_token: string
-  refresh_token: string
-  expiry_date: number
-  employee_sheet_id: string
-}
-
-export const loadStoredGoogleAuth = async (): Promise<Partial<StoredGoogleAuth>> => {
-  const [at, rt, ed, sid] = await Promise.all([
-    authGet('access_token'),
-    authGet('refresh_token'),
-    authGet('expiry_date'),
-    authGet('employee_sheet_id')
-  ])
-  const result: Partial<StoredGoogleAuth> = {}
-  if (at) result.access_token = at
-  if (rt) result.refresh_token = rt
-  if (ed) result.expiry_date = parseInt(ed)
-  if (sid) result.employee_sheet_id = sid
-  return result
-}
-
-export const saveGoogleAuthTokens = async (tokens: {
-  access_token: string
-  refresh_token: string
-  expiry_date: number
-}): Promise<void> => {
-  await Promise.all([
-    authSet('access_token', tokens.access_token),
-    authSet('refresh_token', tokens.refresh_token),
-    authSet('expiry_date', String(tokens.expiry_date))
-  ])
-}
-
-export const clearGoogleAuthTokens = async (): Promise<void> => {
-  await Promise.all([
-    authDel('access_token'),
-    authDel('refresh_token'),
-    authDel('expiry_date')
-  ])
-}
-
-export const saveEmployeeSheetId = async (sheetId: string): Promise<void> => {
-  await authSet('employee_sheet_id', sheetId)
-}
+export const saveEmployeeSheetId = async (sheetId: string): Promise<void> =>
+  authSet('employee_sheet_id', sheetId)
 
 // ── Employee sync & login ──────────────────────────────────────────────────
 
@@ -302,9 +254,7 @@ export const loginEmployee = async (email: string, password: string): Promise<Em
 }
 
 export const employeeStoreService = {
-  loadStoredGoogleAuth,
-  saveGoogleAuthTokens,
-  clearGoogleAuthTokens,
+  getStoredSheetId,
   saveEmployeeSheetId,
   saveDepartments,
   saveDesignations,

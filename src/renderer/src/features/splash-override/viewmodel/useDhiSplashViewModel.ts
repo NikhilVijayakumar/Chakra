@@ -122,19 +122,11 @@ export const useDhiSplashViewModel = (onComplete: () => void, onSshFailure: () =
               const gs = (window.api as any).googleSheets
               const authStatus = await gs?.getAuthStatus?.()
 
-              if (authStatus?.error) {
-                // Credentials not configured in .env — warn but don't block startup
-                console.warn('[Chakra] Google Sheets credentials not configured:', authStatus.error)
+              if (!authStatus?.authenticated) {
+                console.warn('[Chakra] Google service account unavailable:', authStatus?.error)
                 updateStage(currentIndex, {
                   status: 'skipped',
-                  detailMessage: `Google Sheets not configured: ${authStatus.error} Set MAIN_VITE_CHAKRA_GOOGLE_CLIENT_ID and MAIN_VITE_CHAKRA_GOOGLE_CLIENT_SECRET in .env, then run OAuth via chakra:google-auth-start.`
-                })
-              } else if (!authStatus?.authenticated) {
-                // Credentials exist but OAuth not completed yet
-                console.warn('[Chakra] Google Sheets not authenticated — no refresh token stored. Run chakra:google-auth-start to complete OAuth.')
-                updateStage(currentIndex, {
-                  status: 'skipped',
-                  detailMessage: 'Google account not connected — using cached employee data. Run the Google OAuth flow to enable live sync.'
+                  detailMessage: `Google service account not available${authStatus?.error ? `: ${authStatus.error}` : ''}. Place the key file at config/chakra-service-account.json.`
                 })
               } else {
                 const result = await gs.sync()

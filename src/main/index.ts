@@ -254,59 +254,41 @@ const bootstrapPranaMain = async (): Promise<void> => {
   // Google Sheets integration IPC handlers
   try {
     const { ipcMain } = await import('electron')
-    const googleAuth = await import('./services/googleAuthService')
+    const serviceAccount = await import('./services/googleServiceAccountService')
     const sheetsSync = await import('./services/sheetsSyncService')
     const employeeStore = await import('./services/employeeStoreService')
 
     ipcMain.handle('chakra:google-auth-status', async () => {
-      const clientId = runtimeEnvValue('GOOGLE_CLIENT_ID') ?? ''
-      const clientSecret = runtimeEnvValue('GOOGLE_CLIENT_SECRET') ?? ''
-      if (!clientId || !clientSecret) {
-        return { authenticated: false, error: 'GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET not configured.' }
+      const status = await serviceAccount.getServiceAccountStatus()
+      const sheetId = await employeeStore.getStoredSheetId()
+      return {
+        authenticated: status.available,
+        serviceAccountEmail: status.email,
+        employee_sheet_id: sheetId ?? undefined,
+        error: status.error
       }
-      return googleAuth.getAuthStatus(clientId, clientSecret)
-    })
-
-    ipcMain.handle('chakra:google-auth-start', async () => {
-      const clientId = runtimeEnvValue('GOOGLE_CLIENT_ID') ?? ''
-      const clientSecret = runtimeEnvValue('GOOGLE_CLIENT_SECRET') ?? ''
-      if (!clientId || !clientSecret) {
-        return { success: false, error: 'GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET not configured in .env.' }
-      }
-      return googleAuth.runOAuthFlow(clientId, clientSecret)
-    })
-
-    ipcMain.handle('chakra:google-auth-revoke', async () => {
-      await googleAuth.clearStoredAuth()
-      return { success: true }
     })
 
     ipcMain.handle('chakra:sheets-employee-sheet-set', async (_event, payload: { employee_sheet_id: string }) => {
-      await googleAuth.saveEmployeeSheetId(payload.employee_sheet_id)
+      await employeeStore.saveEmployeeSheetId(payload.employee_sheet_id)
       return { success: true }
     })
 
     ipcMain.handle('chakra:sheets-sync', async () => {
-      const clientId = runtimeEnvValue('GOOGLE_CLIENT_ID') ?? ''
-      const clientSecret = runtimeEnvValue('GOOGLE_CLIENT_SECRET') ?? ''
-
-      if (!clientId || !clientSecret) {
-        return { success: false, errors: ['Google OAuth credentials not configured in .env.'], employeesLoaded: 0, departmentsLoaded: 0, designationsLoaded: 0 }
+      const zeros = { departmentsLoaded: 0, designationsLoaded: 0, employeesLoaded: 0 }
+      try {
+        const status = await serviceAccount.getServiceAccountStatus()
+        if (!status.available) {
+          return { success: false, errors: [status.error ?? 'Service account key not available'], ...zeros }
+        }
+        const spreadsheetId = (await employeeStore.getStoredSheetId()) ?? runtimeEnvValue('GOOGLE_EMPLOYEE_SHEET_ID') ?? ''
+        if (!spreadsheetId) {
+          return { success: false, errors: ['Spreadsheet ID not configured. Enter it in Google Sheets Settings.'], ...zeros }
+        }
+        return sheetsSync.syncHrFromSheets(spreadsheetId)
+      } catch (err) {
+        return { success: false, errors: [(err as Error).message ?? 'Sync failed'], ...zeros }
       }
-
-      const accessToken = await googleAuth.getValidAccessToken(clientId, clientSecret)
-      if (!accessToken) {
-        return { success: false, errors: ['Not authenticated with Google. Run chakra:google-auth-start first.'], employeesLoaded: 0, departmentsLoaded: 0, designationsLoaded: 0 }
-      }
-
-      const stored = await googleAuth.getAuthStatus(clientId, clientSecret)
-      const spreadsheetId = stored?.employee_sheet_id ?? runtimeEnvValue('GOOGLE_EMPLOYEE_SHEET_ID') ?? ''
-
-      if (!spreadsheetId) {
-        return { success: false, errors: ['Spreadsheet ID not configured. Set MAIN_VITE_CHAKRA_GOOGLE_EMPLOYEE_SHEET_ID in .env.'], employeesLoaded: 0, departmentsLoaded: 0, designationsLoaded: 0 }
-      }
-
-      return sheetsSync.syncHrFromSheets(accessToken, spreadsheetId)
     })
 
     ipcMain.handle('chakra:auth-login', async (_event, payload: { email: string; password: string }) => {

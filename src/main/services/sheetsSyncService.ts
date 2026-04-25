@@ -1,5 +1,6 @@
 import { readDepartmentSheet, readDesignationSheet, readEmployeeSheet } from './googleSheetsService'
 import { saveDepartments, saveDesignations, saveEmployees } from './employeeStoreService'
+import { getServiceAccountToken } from './googleServiceAccountService'
 
 export interface HrSyncResult {
   success: boolean
@@ -9,10 +10,8 @@ export interface HrSyncResult {
   errors: string[]
 }
 
-export const syncHrFromSheets = async (
-  accessToken: string,
-  spreadsheetId: string
-): Promise<HrSyncResult> => {
+export const syncHrFromSheets = async (spreadsheetId: string): Promise<HrSyncResult> => {
+  const accessToken = await getServiceAccountToken()
   const errors: string[] = []
   let departmentsLoaded = 0
   let designationsLoaded = 0

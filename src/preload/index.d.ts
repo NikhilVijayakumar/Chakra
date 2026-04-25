@@ -1459,12 +1459,8 @@ interface HostDependencyDiagnostic {
 
 interface GoogleSheetsAuthStatus {
   authenticated: boolean
+  serviceAccountEmail?: string
   employee_sheet_id?: string
-  error?: string
-}
-
-interface GoogleSheetsOAuthResult {
-  success: boolean
   error?: string
 }
 
@@ -1480,8 +1476,6 @@ interface DhiApi {
   [key: string]: unknown
   googleSheets: {
     getAuthStatus: () => Promise<GoogleSheetsAuthStatus>
-    startAuth: () => Promise<GoogleSheetsOAuthResult>
-    revokeAuth: () => Promise<void>
     setEmployeeSheetId: (employeeSheetId: string) => Promise<void>
     sync: () => Promise<HrSyncResult>
   }

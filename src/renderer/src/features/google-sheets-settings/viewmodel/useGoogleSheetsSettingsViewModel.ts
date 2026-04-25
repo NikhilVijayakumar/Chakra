@@ -2,8 +2,9 @@ import { useState, useEffect, useCallback } from 'react'
 
 export interface GoogleAuthStatus {
   authenticated: boolean
-  email?: string
-  expiresAt?: number
+  serviceAccountEmail?: string
+  employee_sheet_id?: string
+  error?: string
 }
 
 export interface SheetConfig {
@@ -26,8 +27,6 @@ export const useGoogleSheetsSettingsViewModel = () => {
     employee_sheet_id: ''
   })
   const [isLoadingStatus, setIsLoadingStatus] = useState(true)
-  const [isConnecting, setIsConnecting] = useState(false)
-  const [isRevoking, setIsRevoking] = useState(false)
   const [isSavingConfig, setIsSavingConfig] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
   const [syncResult, setSyncResult] = useState<SyncResult | null>(null)
@@ -42,7 +41,6 @@ export const useGoogleSheetsSettingsViewModel = () => {
     try {
       const status = await gs.getAuthStatus()
       setAuthStatus(status ?? { authenticated: false })
-      // employee_sheet_id is stored alongside OAuth tokens in SQLite
       if (status?.employee_sheet_id) {
         setSheetConfig((prev) => ({ ...prev, employee_sheet_id: status.employee_sheet_id ?? '' }))
       }
@@ -56,40 +54,6 @@ export const useGoogleSheetsSettingsViewModel = () => {
   useEffect(() => {
     loadStatus()
   }, [loadStatus])
-
-  const handleConnect = useCallback(async () => {
-    if (!gs) return
-    setIsConnecting(true)
-    setError(null)
-    try {
-      const result = await gs.startAuth()
-      if (result?.success) {
-        setSuccessMessage('Google account connected successfully.')
-        await loadStatus()
-      } else {
-        setError(result?.error ?? 'OAuth flow failed or was cancelled.')
-      }
-    } catch (err: any) {
-      setError(err?.message ?? 'Failed to start OAuth flow.')
-    } finally {
-      setIsConnecting(false)
-    }
-  }, [gs, loadStatus])
-
-  const handleRevoke = useCallback(async () => {
-    if (!gs) return
-    setIsRevoking(true)
-    setError(null)
-    try {
-      await gs.revokeAuth()
-      setAuthStatus({ authenticated: false })
-      setSuccessMessage('Google account disconnected.')
-    } catch (err: any) {
-      setError(err?.message ?? 'Failed to revoke access.')
-    } finally {
-      setIsRevoking(false)
-    }
-  }, [gs])
 
   const handleSaveConfig = useCallback(async () => {
     if (!gs) return
@@ -140,15 +104,11 @@ export const useGoogleSheetsSettingsViewModel = () => {
     sheetConfig,
     setSheetConfig,
     isLoadingStatus,
-    isConnecting,
-    isRevoking,
     isSavingConfig,
     isSyncing,
     syncResult,
     error,
     successMessage,
-    handleConnect,
-    handleRevoke,
     handleSaveConfig,
     handleSync,
     clearMessages,

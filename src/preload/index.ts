@@ -50,8 +50,6 @@ const api = {
   },
   googleSheets: {
     getAuthStatus: () => electronAPI.ipcRenderer.invoke('chakra:google-auth-status'),
-    startAuth: () => electronAPI.ipcRenderer.invoke('chakra:google-auth-start'),
-    revokeAuth: () => electronAPI.ipcRenderer.invoke('chakra:google-auth-revoke'),
     setEmployeeSheetId: (employeeSheetId: string) =>
       electronAPI.ipcRenderer.invoke('chakra:sheets-employee-sheet-set', { employee_sheet_id: employeeSheetId }),
     sync: () => electronAPI.ipcRenderer.invoke('chakra:sheets-sync')
