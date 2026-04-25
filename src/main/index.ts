@@ -230,11 +230,17 @@ const bootstrapPranaMain = async (): Promise<void> => {
         // This works around authStoreService using bare mkdir() without the WinFsp
         // EPERM guard that mkdirSafe() provides (pending Prana fix in authStoreService.ts).
         try {
-          const { setSqliteRootOverride } = await import('prana/main/services/governanceRepoService')
           const sqliteRoot = join(driveRoot, 'cache', 'sqlite')
+
+          // Tell Prana services (authStoreService etc.) about the new root
+          const { setSqliteRootOverride } = await import('prana/main/services/governanceRepoService')
           setSqliteRootOverride(sqliteRoot)
           console.info('[Chakra] SQLite root pinned to cache/sqlite under drive root')
 
+          // Tell Chakra's own employeeStoreService directly — avoids the
+          // cross-chunk require() that fails in the built output
+          const { setSqliteRoot } = await import('./services/employeeStoreService')
+          setSqliteRoot(sqliteRoot)
           console.info('[Chakra] SQLite root set; employee store will lazy-init on first use')
         } catch (sqliteErr) {
           console.warn('[Chakra] Could not pin SQLite root override:', sqliteErr)

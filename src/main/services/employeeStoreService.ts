@@ -1,15 +1,22 @@
 import { existsSync } from 'node:fs'
-import { readFile, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import initSqlJs, { type Database, type SqlJsStatic } from 'sql.js'
 import bcrypt from 'bcryptjs'
 import type { DepartmentRow, DesignationRow, EmployeeRow } from './googleSheetsService'
 
 const DB_FILE_NAME = 'chakra.sqlite'
+const DEFAULT_SQLITE_ROOT = join(process.cwd(), 'cache', 'sqlite')
 
+let _sqliteRoot: string = DEFAULT_SQLITE_ROOT
 let sqlRuntimePromise: Promise<SqlJsStatic> | null = null
 let dbPromise: Promise<Database> | null = null
 let writeQueue: Promise<void> = Promise.resolve()
+
+export const setSqliteRoot = (root: string): void => {
+  _sqliteRoot = root
+  dbPromise = null  // force re-init from the new path on next use
+}
 
 const resolveSqlJsAsset = (fileName: string): string => {
   const candidates = [
@@ -30,19 +37,10 @@ const getSqlRuntime = async (): Promise<SqlJsStatic> => {
   return sqlRuntimePromise
 }
 
-const getDbPath = (): string => {
-  // Import inline to pick up the current root (may be overridden for virtual drive)
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { getSqliteRoot } = require('prana/main/services/governanceRepoService') as {
-    getSqliteRoot: () => string
-  }
-  return join(getSqliteRoot(), DB_FILE_NAME)
-}
+const getDbPath = (): string => join(_sqliteRoot, DB_FILE_NAME)
 
 const persistDb = async (db: Database): Promise<void> => {
-  const { mkdirSafe } = await import('prana/main/services/governanceRepoService')
-  const { getSqliteRoot } = await import('prana/main/services/governanceRepoService')
-  await mkdirSafe(getSqliteRoot())
+  await mkdir(_sqliteRoot, { recursive: true })
   await writeFile(getDbPath(), Buffer.from(db.export()))
 }
 
@@ -53,9 +51,7 @@ const queueWrite = async (op: () => Promise<void>): Promise<void> => {
 
 const initializeDb = async (): Promise<Database> => {
   const SQL = await getSqlRuntime()
-  const { mkdirSafe } = await import('prana/main/services/governanceRepoService')
-  const { getSqliteRoot } = await import('prana/main/services/governanceRepoService')
-  await mkdirSafe(getSqliteRoot())
+  await mkdir(_sqliteRoot, { recursive: true })
   const dbPath = getDbPath()
   const db = existsSync(dbPath)
     ? new SQL.Database(new Uint8Array(await readFile(dbPath)))
