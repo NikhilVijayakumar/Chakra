@@ -1,7 +1,7 @@
-# Design Specification — RITA
+# Design Specification — Chakra
 
 > Premium Best-in-Class, Award-Winning Design System
-> Dark & Light Theme · Dual-Mode · NEEV Rendering Pipeline
+> Modern Minimalist Tech-Noir · Dual-Mode · NEEV Rendering Pipeline
 > This file is the canonical source of truth for all UI, styling, and visual work.
 > Agents must read this before touching any visual artifact.
 
@@ -30,17 +30,17 @@
 
 ## 1. Brand Philosophy
 
-**RITA is a premium HR and attendance management platform. The interface must communicate calm authority, precision, and trust — comparable in quality to Apple, Stripe, and Notion.**
+**Chakra is a system-driven platform and living archive. The interface must communicate calm authority, intellectual rigor, and cinematic trust — comparable in quality to Apple, Linear, and Stripe.**
 
-> Great design removes friction and reveals clarity.
+> If an element does not add meaning, remove it.
 
 The brand rests on three non-negotiable pillars:
 
 | Pillar | Description | Implementation |
 |---|---|---|
-| **Precision** | Design feels engineered and intentional | Strict spacing grid, perfect alignment, predictable rhythm |
-| **Clarity** | Information is immediately understandable | Typography-led hierarchy, minimal decoration, purposeful color |
-| **Restraint** | Minimalism elevates focus and elegance | Limited palette, no decorative UI, whitespace treated as a feature |
+| **Calm Intellect** | Design feels engineered and intentional | Strict spacing grid, perfect alignment, predictable rhythm |
+| **Cinematic Restraint** | Information is immediately understandable | Typography-led hierarchy, minimal decoration, purposeful motion |
+| **System-Driven** | Scalable logic defines structure | Deep Navy/Black base, limited palette, whitespace treated as a feature |
 
 ### The 10 Core Design Rules
 
@@ -57,11 +57,11 @@ The brand rests on three non-negotiable pillars:
 
 ### Premium Aesthetic Modes
 
-**Geometric Silence** — Pure order and restraint. Grid-based precision, dramatic negative space, Swiss formalism meets material honesty. Every alignment is the result of deliberate refinement.
+**Tech-Noir (Dark Theme)** — Canonical experience. Pure order and restraint. Deep Navy/Black base, high-contrast typography, and gold/neon accents used strictly for meaning. 
 
-**Chromatic Language** — Color as information. Geometric zones create meaning. Typography anchors what color communicates. Minimal words, maximum clarity.
+**Professional Reading (Light Theme)** — Alternative viewing mode for accessibility and institutional trust. Bone/parchment surfaces with charcoal typography. Identical layout and motion.
 
-> The final artifact must look meticulously crafted — as if labored over by a designer at the absolute top of their field. "Good enough" is unacceptable. The UI must elicit an emotional response through its craftsmanship.
+> The final artifact must look meticulously crafted — as if labored over by a designer at the absolute top of their field. "Good enough" is unacceptable. The UI must feel like a calm, timeless archive.
 
 ---
 
@@ -107,23 +107,23 @@ Instead of vague prompts like "make it premium," use:
 
 > All values consumed via CSS variables. Never hardcode hex values in component styles.
 
-### Brand Accent
+### Brand Accent (Chakra Specific)
 
 ```ts
-primary:       '#5A60F5'   // Soft indigo — CTAs, primary actions, focus rings
+primary:       '#5A60F5'   // Soft indigo (Chakra Signature) — CTAs, primary actions, focus rings
 primaryHover:  '#5255DF'   // Darker — interactive states
 secondary:     '#8a8f98'   // Neutral secondary — icons, subtle elements
 ```
 
-### Light Mode Palette
+### Light Mode Palette (Professional & Reading-First)
 
 ```ts
 // Backgrounds
-background.default:  '#F5F5F7'   // Barely gray — never pure white
+background.default:  '#F7F6F2'   // Warm bone/parchment — never pure white
 background.paper:    '#FFFFFF'   // Elevated surfaces — cards, modals
 
 // Text
-text.primary:    '#111318'   // Near-black — headings, body
+text.primary:    '#1A1C23'   // Charcoal / deep navy — headings, body
 text.secondary:  '#687076'   // Muted — captions, metadata, hints
 
 // Borders
@@ -133,46 +133,45 @@ border:  'rgba(0, 0, 0, 0.08)'  // Hairline separators
 divider:  '#E5E7EB'  // Neutral 200 range
 ```
 
-### Dark Mode Palette
+### Dark Mode Palette (Tech-Noir - Canonical)
 
 ```ts
 // Backgrounds (layered — never pure black)
-background.default:  '#0e1015'   // Deep charcoal — base layer
-background.paper:    '#16181D'   // Slightly lighter — cards, drawers
-background.panel:    '#1E2028'   // Highest elevation — modals, popovers
+background.default:  '#090B10'   // Deep Navy / Soft Black — base layer
+background.paper:    '#12141A'   // Slightly lighter — cards, drawers
+background.panel:    '#1A1D24'   // Highest elevation — modals, popovers
 
 // Text (4–5 contrast tiers)
-text.primary:    '#EDEDEF'   // Near-white — headings, body
+text.primary:    '#F2F2F3'   // Warm off-white — headings, body
 text.secondary:  '#8A8F98'   // Muted — captions, metadata
 
 // Borders
 border:  'rgba(255, 255, 255, 0.08)'  // Subtle separators
-divider:  '#374151'  // Neutral 700 — never pure black dividers
+divider:  '#2C3240'  // Deep navy/gray — never pure black dividers
 ```
 
 ### Status Palette
 
 ```ts
-error:    '#ED5F74'   // Errors, destructive actions
-warning:  '#F5A623'   // Warnings
-success:  '#34C759'   // Success states
-info:     '#5A60F5'   // Informational (same as primary)
-crisis:   '#F85149'   // Critical alerts — HR safety/emergency
+error:    '#E05D6E'   // Errors, destructive actions
+warning:  '#F2A73B'   // Warnings
+success:  '#3AA664'   // Success states
+info:     '#5A60F5'   // Informational
 ```
 
 ### Golden Color Rules
 
 **Light Mode:**
-- Avoid pure white (`#FFFFFF`) as the dominant surface — use `#F5F5F7`
+- Avoid pure white (`#FFFFFF`) as the dominant surface — use `#F7F6F2` (bone/parchment)
 - Use 3–5 neutral steps between surfaces
 - Prefer space over borders to separate content
-- Text: near-black (`#111318`), not absolute black
+- Text: charcoal/deep navy (`#1A1C23`), not absolute black
 
 **Dark Mode:**
-- Avoid pure black (`#000000`) — use layered charcoals
+- Avoid pure black (`#000000`) — use Deep Navy/Soft Black
 - Maintain 4–5 surface tiers for depth
-- Keep accent saturation controlled — never neon in dark mode
-- Dividers: `Neutral 700` range, never solid black lines
+- Keep accent saturation controlled — never neon decoration
+- Dividers: `Neutral Deep` range, never solid black lines
 
 ---
 
@@ -969,7 +968,7 @@ Apply before releasing any screen, component, or interface.
 
 ### Final Standard
 
-> If a screen feels visually effortless, it has likely achieved the RITA design quality standard.
+> If a screen feels visually effortless, it has likely achieved the Chakra design quality standard.
 > 
 > Premium design is not about adding more. It is about removing everything unnecessary.
 
@@ -980,19 +979,13 @@ Apply before releasing any screen, component, or interface.
 | Document | Purpose |
 |---|---|
 | `docs/design/theme.md` | NEEV theme contract |
-| `docs/design/premium-aesthetics.md` | Museum-quality aesthetic guidelines |
+| `docs/design/premium-aesthetics.md` | Tech-Noir aesthetic guidelines |
 | `docs/design/mui-tokens.md` | MUI token to CSS variable mapping |
 | `docs/design/atomic-rules.md` | Structural hierarchy and grid rules |
-| `docs/design/navigation.md` | Navigation intent system |
-| `docs/design/accessibility.md` | A11y standards |
-| `docs/design/viewport.md` | Responsive strategy |
-| `docs/rules/Brand Guideline.md` | Brand identity and voice |
-| `docs/rules/Core Design Rules.md` | The 10 core rules |
-| `docs/rules/Premium UI Patterns.md` | Component pattern library |
-| `docs/rules/Design Quality Checklist.md` | Pre-release quality gate |
-| `docs/references/general.md` | Canonical reference matrix |
-| `docs/references/animations.md` | Animation reference matrix |
+| `docs/brand/BAVANS Theme Reference System.md` | Theme references |
+| `docs/brand/BAVANS – Developer & Design Directive.md` | Developer guidelines |
+| `docs/brand/Bavans – Core Idea & Vision.md` | Brand narrative and vision |
 
 ---
 
-*Last updated: April 2026 · Design System — RITA · NEEV Rendering Pipeline*
+*Last updated: April 2026 · Design System — Chakra · NEEV Rendering Pipeline*
