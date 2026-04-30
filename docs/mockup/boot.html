@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Booting — Chakra</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+/* Same CSS as the old index.html, removing the heritage specific tooltips */
+:root{--primary:#5A60F5;--success:#34C759;--warning:#F5A623;--el:cubic-bezier(.25,.46,.45,.94);--es:cubic-bezier(.4,0,.2,1)}
+[data-theme="dark"]{--bg:#0A0A0C;--paper:#141418;--tp:#EDEDEF;--ts:#8A8F98;--b:rgba(255,255,255,.08);--d:#374151;--sh:rgba(0,0,0,.4);--ec:rgba(237,237,239,.12);--eg:rgba(90,96,245,.08)}
+[data-theme="light"]{--bg:#F2F0EB;--paper:#FFF;--tp:#3A3A3A;--ts:#687076;--b:rgba(0,0,0,.08);--d:#E5E7EB;--sh:rgba(0,0,0,.08);--ec:rgba(58,58,58,.06);--eg:rgba(90,96,245,.04)}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Inter',system-ui,sans-serif}
+body{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg);color:var(--tp);transition:background .3s var(--es),color .3s var(--es);overflow:hidden;padding:24px}
+.tt{position:fixed;top:24px;right:24px;width:40px;height:40px;border-radius:50%;border:1px solid var(--b);background:var(--paper);color:var(--ts);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s var(--es);z-index:100}
+.tt:hover{color:var(--primary);border-color:var(--primary);transform:scale(1.05)}
+.bh{position:fixed;top:28px;left:50%;transform:translateX(-50%);font-size:.6875rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--ts);opacity:0;animation:fi 600ms var(--el) forwards}
+.lc{display:flex;gap:16px;margin-bottom:48px;opacity:0;animation:fi 400ms var(--el) 200ms forwards}
+.bl{position:relative;display:flex;flex-direction:column;align-items:center;animation:zf 4s ease-in-out infinite;transition:transform .2s var(--es)}
+.bl:nth-child(1){animation-delay:0s}.bl:nth-child(2){animation-delay:.15s}.bl:nth-child(3){animation-delay:.3s}.bl:nth-child(4){animation-delay:.45s}.bl:nth-child(5){animation-delay:.6s}.bl:nth-child(6){animation-delay:.75s}
+.bl .ch{font-size:3.5rem;font-weight:900;line-height:1;letter-spacing:-.03em;transition:all .2s var(--es)}
+[data-theme="dark"] .bl .ch{color:var(--tp);text-shadow:0 0 20px rgba(237,237,239,.15)}
+[data-theme="light"] .bl .ch{color:var(--tp);text-shadow:none}
+.bl:hover .ch{color:var(--primary)!important;transform:scale(1.05)}
+.bl .tip{position:absolute;bottom:-32px;left:50%;transform:translateX(-50%) translateY(8px);opacity:0;font-size:.6875rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--primary);white-space:nowrap;pointer-events:none;transition:all .3s var(--el);background:var(--paper);padding:4px 12px;border-radius:99px;border:1px solid var(--b);box-shadow:0 2px 8px var(--sh)}
+.bl:hover .tip{opacity:1;transform:translateX(-50%) translateY(0)}
+.en{position:absolute;width:500px;height:500px;pointer-events:none;z-index:-1;opacity:0;animation:fi 800ms var(--el) 400ms forwards}
+.en svg{width:100%;height:100%}
+.en circle{fill:none;stroke:var(--ec);stroke-width:1.5;stroke-dasharray:314;stroke-dashoffset:314;animation:ed 1200ms var(--el) 600ms forwards}
+.eg{fill:var(--eg);stroke:none;filter:blur(40px)}
+.bc{width:100%;max-width:440px;background:var(--paper);border:1px solid var(--b);border-radius:16px;padding:24px;opacity:0;animation:fiu 400ms var(--el) 800ms forwards}
+.bs{display:flex;align-items:flex-start;gap:16px;padding:12px 0;position:relative;opacity:0;animation:fiu 400ms var(--el) forwards}
+.bs:nth-child(1){animation-delay:1000ms}.bs:nth-child(2){animation-delay:1120ms}.bs:nth-child(3){animation-delay:1240ms}.bs:nth-child(4){animation-delay:1360ms}.bs:nth-child(5){animation-delay:1480ms}
+.bs:not(:last-child)::after{content:'';position:absolute;left:15px;top:36px;bottom:0;width:1px;background:var(--d)}
+.si{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;position:relative;z-index:2;background:var(--bg);border:1px solid var(--b)}
+.si.pd{color:var(--ts);opacity:.4}.si.ld{border-color:var(--primary);color:var(--primary);animation:pu 1.5s ease-in-out infinite}.si.sc{border-color:var(--success);background:rgba(52,199,89,.1);color:var(--success)}
+.sk{flex:1;min-width:0}.skt{font-size:.875rem;font-weight:500;color:var(--tp);margin-bottom:2px}.skd{font-size:.75rem;color:var(--ts);opacity:0;transition:opacity .3s var(--es)}.si.sc~.sk .skd{opacity:1}
+@keyframes fi{from{opacity:0}to{opacity:1}}
+@keyframes fiu{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes zf{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes ed{from{stroke-dashoffset:314}to{stroke-dashoffset:0}}
+@keyframes pu{0%,100%{opacity:1}50%{opacity:.5}}
+.ic{width:16px;height:16px}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+@media(max-width:480px){.bl .ch{font-size:2.5rem}.lc{gap:8px}.en{width:300px;height:300px}}
+</style>
+</head>
+<body>
+<button class="tt" onclick="toggleTheme()" aria-label="Toggle theme">
+<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+<circle cx="12" cy="12" r="5" class="si2"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" class="sr"/><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" class="mi" style="display:none"/>
+</svg>
+</button>
+<div class="bh">CHAKRA PLATFORM</div>
+<div class="en"><svg viewBox="0 0 200 200"><circle class="eg" cx="100" cy="100" r="90"/><circle cx="100" cy="100" r="90" transform="rotate(-45 100 100)"/></svg></div>
+<div class="lc">
+<div class="bl"><span class="ch">C</span><span class="tip">Chakra</span></div>
+<div class="bl"><span class="ch">H</span><span class="tip">Application</span></div>
+<div class="bl"><span class="ch">A</span><span class="tip">Platform</span></div>
+<div class="bl"><span class="ch">K</span><span class="tip">Secure</span></div>
+<div class="bl"><span class="ch">R</span><span class="tip">Runtime</span></div>
+<div class="bl"><span class="ch">A</span><span class="tip">Engine</span></div>
+</div>
+<div class="bc">
+<div class="bs"><div class="si sc"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div><div class="sk"><div class="skt">Platform Runtime Configuration</div><div class="skd">Bootstrap complete.</div></div></div>
+<div class="bs"><div class="si sc"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div><div class="sk"><div class="skt">Syncing Employee Directory</div><div class="skd">Cached data loaded.</div></div></div>
+<div class="bs"><div class="si ld"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" stroke-dasharray="60" stroke-dashoffset="15"/></svg></div><div class="sk"><div class="skt">Governance Repository Verification</div><div class="skd">Validating SSH credentials...</div></div></div>
+<div class="bs"><div class="si pd"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg></div><div class="sk"><div class="skt">Mounting Local Encrypted Vault</div><div class="skd"></div></div></div>
+<div class="bs"><div class="si pd"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg></div><div class="sk"><div class="skt">Probing Local AI Model Gateway</div><div class="skd"></div></div></div>
+</div>
+<script>
+function toggleTheme(){var h=document.documentElement;h.setAttribute('data-theme',h.getAttribute('data-theme')==='dark'?'light':'dark');u()}
+function u(){var d=document.documentElement.getAttribute('data-theme')==='dark';document.querySelector('.si2').style.display=d?'block':'none';document.querySelector('.sr').style.display=d?'block':'none';document.querySelector('.mi').style.display=d?'none':'block'}
+u();
+setTimeout(function(){var s=document.querySelectorAll('.bs');s[2].querySelector('.si').className='si sc';s[2].querySelector('.si').innerHTML='<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>';s[2].querySelector('.skd').textContent='SSH credentials validated.';s[2].querySelector('.skd').style.opacity='1'},2000);
+setTimeout(function(){var s=document.querySelectorAll('.bs');s[3].querySelector('.si').className='si ld';s[3].querySelector('.si').innerHTML='<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" stroke-dasharray="60" stroke-dashoffset="15"/></svg>';s[3].querySelector('.skd').textContent='Initializing vault...';s[3].querySelector('.skd').style.opacity='1'},2800);
+setTimeout(function(){var s=document.querySelectorAll('.bs');s[3].querySelector('.si').className='si sc';s[3].querySelector('.si').innerHTML='<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>';s[3].querySelector('.skd').textContent='Vault initialized.'},3500);
+setTimeout(function(){var s=document.querySelectorAll('.bs');s[4].querySelector('.si').className='si ld';s[4].querySelector('.si').innerHTML='<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" stroke-dasharray="60" stroke-dashoffset="15"/></svg>';s[4].querySelector('.skd').textContent='Probing gateway...';s[4].querySelector('.skd').style.opacity='1'},3800);
+setTimeout(function(){var s=document.querySelectorAll('.bs');s[4].querySelector('.si').className='si sc';s[4].querySelector('.si').innerHTML='<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>';s[4].querySelector('.skd').textContent='Gateway connected.';s[4].querySelector('.skd').style.opacity='1'},4300);
+setTimeout(function(){ window.location.href = 'login.html'; }, 5000);
+</script>
+</body>
+</html>

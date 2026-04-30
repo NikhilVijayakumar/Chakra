@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chakra Login — BAVANS</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{--primary:#5A60F5;--ph:#5255DF;--error:#ED5F74;--el:cubic-bezier(.25,.46,.45,.94);--es:cubic-bezier(.4,0,.2,1)}
+[data-theme="dark"]{--bg:#0A0A0C;--paper:#141418;--elev:#1C1C22;--tp:#EDEDEF;--ts:#8A8F98;--b:rgba(255,255,255,.08);--d:#374151;--sh:rgba(0,0,0,.4);--ib:#1C1C22;--ibr:rgba(255,255,255,.12)}
+[data-theme="light"]{--bg:#F2F0EB;--paper:#FFF;--elev:#FFF;--tp:#3A3A3A;--ts:#687076;--b:rgba(0,0,0,.08);--d:#E5E7EB;--sh:rgba(0,0,0,.08);--ib:#FFF;--ibr:rgba(0,0,0,.12)}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Inter',system-ui,sans-serif}
+body{min-height:100vh;display:flex;background:var(--bg);color:var(--tp);transition:background .3s var(--es),color .3s var(--es)}
+.tt{position:fixed;top:24px;right:24px;width:40px;height:40px;border-radius:50%;border:1px solid var(--b);background:var(--paper);color:var(--ts);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s var(--es);z-index:100}
+.tt:hover{color:var(--primary);border-color:var(--primary);transform:scale(1.05)}
+.ic{width:16px;height:16px}
+.lc{display:flex;width:100%;min-height:100vh}
+.lp{flex:2;display:flex;flex-direction:column;justify-content:center;padding:64px;position:relative;overflow:hidden}
+.bm{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);opacity:.03;font-size:20rem;font-weight:900;letter-spacing:-.04em;color:var(--tp);pointer-events:none;user-select:none}
+.lco{position:relative;z-index:2;opacity:0;animation:fiu 600ms var(--el) 100ms forwards}
+.lco .ov{font-size:.6875rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--primary);margin-bottom:16px}
+.lco h1{font-size:clamp(2rem,4vw,3.5rem);font-weight:700;letter-spacing:-.03em;line-height:1.1;margin-bottom:24px;max-width:500px}
+.lco p{font-size:1rem;line-height:1.6;color:var(--ts);max-width:400px}
+.rp{flex:1;min-width:420px;max-width:480px;background:var(--paper);border-left:1px solid var(--b);display:flex;flex-direction:column;justify-content:center;padding:48px}
+.lf{opacity:0;animation:fiu 600ms var(--el) 300ms forwards}
+.lf h2{font-size:1.5rem;font-weight:600;letter-spacing:-.02em;margin-bottom:8px}
+.lf .sub{font-size:.875rem;color:var(--ts);margin-bottom:40px}
+.fg{margin-bottom:24px}
+.fg label{display:block;font-size:.8125rem;font-weight:500;color:var(--tp);margin-bottom:8px}
+.fg input{width:100%;height:44px;padding:0 16px;background:var(--ib);border:1px solid var(--ibr);border-radius:8px;color:var(--tp);font-size:.9375rem;transition:all .2s var(--es);outline:none}
+.fg input:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(90,96,245,.15)}
+.fg input::placeholder{color:var(--ts);opacity:.6}
+.err { color: var(--error); font-size: 0.75rem; margin-top: 6px; display: none; }
+.err.show { display: block; }
+.bp{width:100%;height:44px;background:var(--primary);color:#FFF;border:none;border-radius:8px;font-size:.875rem;font-weight:500;cursor:pointer;transition:all .2s var(--es);margin-top:8px}
+.bp:hover:not(:disabled){background:var(--ph);transform:translateY(-1px);box-shadow:0 4px 12px rgba(90,96,245,.3)}
+.bp:active:not(:disabled){transform:scale(.98)}
+.bp:disabled{background:var(--d);color:var(--ts);cursor:not-allowed}
+.fl{display:block;text-align:center;margin-top:24px;font-size:.8125rem;color:var(--primary);text-decoration:none;transition:opacity .2s var(--es)}
+.fl:hover{opacity:.7}
+.nb{display:inline-flex;align-items:center;gap:8px;font-size:.8125rem;color:var(--ts);text-decoration:none;transition:color .2s var(--es);margin-bottom:40px}
+.nb:hover{color:var(--tp)}
+.static-creds{margin-top:32px;padding:16px;background:rgba(255,255,255,0.03);border:1px solid var(--b);border-radius:8px;font-size:0.75rem;color:var(--ts)}
+.static-creds strong{color:var(--tp)}
+@keyframes fiu{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+@media(max-width:900px){.lc{flex-direction:column}.lp{padding:48px 24px;min-height:auto}.rp{min-width:auto;max-width:none;border-left:none;border-top:1px solid var(--b)}.bm{font-size:12rem}}
+</style>
+</head>
+<body>
+<button class="tt" onclick="toggleTheme()" aria-label="Toggle theme">
+<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5" class="si2"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" class="sr"/><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" class="mi" style="display:none"/></svg>
+</button>
+<div class="lc">
+<div class="lp">
+<div class="bm">C</div>
+<div class="lco">
+<div class="ov">BAVANS · Chakra</div>
+<h1>Secure access to your application platform</h1>
+<p>Chakra provides unified authentication for all BAVANS applications. Sign in to access your installed apps and manage your platform.</p>
+</div>
+</div>
+<div class="rp">
+<div class="lf">
+<a href="index.html" class="nb"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>Back to Splash</a>
+<h2>Sign in</h2>
+<p class="sub">Enter your credentials to continue</p>
+<div class="fg">
+<label for="email">Email</label>
+<input type="email" id="email" placeholder="you@company.com" autocomplete="email">
+<div class="err" id="email-err"></div>
+</div>
+<div class="fg">
+<label for="password">Password</label>
+<input type="password" id="password" placeholder="Enter password" autocomplete="current-password">
+<div class="err" id="pw-err"></div>
+</div>
+<div class="err" id="global-err" style="margin-bottom: 16px; text-align: center;"></div>
+<button class="bp" id="loginBtn" onclick="attemptLogin()">Sign In</button>
+<a href="forgot-password.html" class="fl">Forgot password?</a>
+
+<div class="static-creds">
+<strong>Demo Credentials:</strong><br>
+Email: admin@bavans.com<br>
+Password: Password123!<br>
+<em>Will lock out for 30s after 3 failed attempts.</em>
+</div>
+</div>
+</div>
+</div>
+<script>
+function toggleTheme(){var h=document.documentElement;h.setAttribute('data-theme',h.getAttribute('data-theme')==='dark'?'light':'dark');u()}
+function u(){var d=document.documentElement.getAttribute('data-theme')==='dark';document.querySelector('.si2').style.display=d?'block':'none';document.querySelector('.sr').style.display=d?'block':'none';document.querySelector('.mi').style.display=d?'none':'block'}
+u();
+
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const pwRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
+
+const VALID_EMAIL = "admin@bavans.com";
+const VALID_PW = "Password123!";
+
+function checkLockout() {
+    const lockoutEnd = localStorage.getItem('chakra_lockout');
+    if(lockoutEnd && Date.now() < parseInt(lockoutEnd)) {
+        const remaining = Math.ceil((parseInt(lockoutEnd) - Date.now()) / 1000);
+        document.getElementById('loginBtn').disabled = true;
+        document.getElementById('loginBtn').textContent = `Locked out (${remaining}s)`;
+        document.getElementById('global-err').textContent = "Too many failed attempts.";
+        document.getElementById('global-err').classList.add('show');
+        setTimeout(checkLockout, 1000);
+        return true;
+    } else {
+        document.getElementById('loginBtn').disabled = false;
+        document.getElementById('loginBtn').textContent = "Sign In";
+        document.getElementById('global-err').classList.remove('show');
+        if(lockoutEnd) localStorage.removeItem('chakra_lockout');
+        return false;
+    }
+}
+
+// init lockout check
+checkLockout();
+
+function attemptLogin() {
+    if(checkLockout()) return;
+
+    let email = document.getElementById('email').value;
+    let pw = document.getElementById('password').value;
+    let emailErr = document.getElementById('email-err');
+    let pwErr = document.getElementById('pw-err');
+    let globalErr = document.getElementById('global-err');
+    
+    emailErr.classList.remove('show');
+    pwErr.classList.remove('show');
+    globalErr.classList.remove('show');
+
+    let valid = true;
+
+    if(!emailRegex.test(email)) {
+        emailErr.textContent = "Please enter a valid email address.";
+        emailErr.classList.add('show');
+        valid = false;
+    }
+    if(!pwRegex.test(pw)) {
+        pwErr.textContent = "Password must be at least 8 characters and include uppercase, lowercase, number, and symbol.";
+        pwErr.classList.add('show');
+        valid = false;
+    }
+
+    if(!valid) return;
+
+    if(email === VALID_EMAIL && pw === VALID_PW) {
+        localStorage.removeItem('chakra_login_attempts');
+        location.href = 'home.html';
+    } else {
+        let attempts = parseInt(localStorage.getItem('chakra_login_attempts') || '0') + 1;
+        localStorage.setItem('chakra_login_attempts', attempts);
+        if(attempts >= 3) {
+            localStorage.setItem('chakra_lockout', Date.now() + 30000); // 30 sec lockout
+            localStorage.removeItem('chakra_login_attempts');
+            checkLockout();
+        } else {
+            globalErr.textContent = `Invalid credentials. ${3 - attempts} attempt(s) remaining.`;
+            globalErr.classList.add('show');
+        }
+    }
+}
+</script>
+</body>
+</html>
