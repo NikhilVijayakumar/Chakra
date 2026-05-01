@@ -43,13 +43,23 @@ interface RuntimeConfig {
 
 interface ForgotPasswordResult {
   success: boolean
-  reason: 'ssh_unavailable' | 'email_mismatch'
+  reason: 'ssh_unavailable' | 'email_mismatch' | 'email_send_failed'
   tempPassword: string | null
+}
+
+interface OtpVerificationResult {
+  success: boolean
+  reason?: 'no_otp_requested' | 'otp_expired' | 'invalid_otp'
 }
 
 interface ResetPasswordResult {
   success: boolean
   reason: 'no_temp_password' | 'temp_password_expired' | 'invalid_password'
+}
+
+interface CodeVerifyResult {
+  success: boolean
+  reason?: string
 }
 
 interface SettingsPayload {
@@ -1500,6 +1510,9 @@ interface DhiApi {
     login: (email: string, password: string) => Promise<AuthLoginResult>
     forgotPassword: (email: string) => Promise<ForgotPasswordResult>
     resetPassword: (newPassword: string) => Promise<ResetPasswordResult>
+    verifyCode: (code: string, hash: string, expiryTimestamp?: number) => Promise<CodeVerifyResult>
+    verifyOtp: (otp: string) => Promise<OtpVerificationResult>
+    sendOtpEmail: (email: string, otp: string) => Promise<{ success: boolean; error?: string }>
   }
   settings: {
     load: () => Promise<SettingsPayload>

@@ -12,6 +12,8 @@ import { verifyStartupSafety, warnWeakVaultConfig } from './services/startupSecu
 import { setPranaPlatformRuntime } from 'prana/main/services/pranaPlatformRuntime'
 import { setPranaRuntimeConfig } from 'prana/main/services/pranaRuntimeConfig'
 
+import { initTemplateRenderer, renderEmailTemplate } from './services/templateRenderer'
+
 let driveLifecycleHooksRegistered = false
 
 const registerDriveLifecycleHooks = (): void => {
@@ -336,6 +338,55 @@ const bootstrapPranaMain = async (): Promise<void> => {
     console.info('[Chakra] Registered Google Sheets IPC handlers')
   } catch (error) {
     console.warn('[Chakra] Could not register Google Sheets IPC handlers:', error)
+  }
+
+  // Email service for OTP verification
+  try {
+    const { ipcMain } = await import('electron')
+    const { configureEmailService, sendEmail } = await import('prana/main/services/emailService')
+
+    const agentMailApiKey = process.env.CHAKRA_AGENTMAIL_API_KEY ?? process.env.MAIN_VITE_CHAKRA_AGENTMAIL_API_KEY
+    const systemInboxId = process.env.CHAKRA_SYSTEM_INBOX_ID ?? process.env.MAIN_VITE_CHAKRA_SYSTEM_INBOX_ID
+
+    if (agentMailApiKey && systemInboxId) {
+      initTemplateRenderer()
+
+      const templateRenderer = async (templateName: string, data: any): Promise<string> => {
+        try {
+          return await renderEmailTemplate(templateName, data)
+        } catch (error) {
+          console.error('[EMAIL] Template render failed:', error)
+          return ''
+        }
+      }
+
+      configureEmailService({
+        apiKey: agentMailApiKey,
+        inboxId: systemInboxId,
+        templateRenderer
+      })
+      console.info('[Chakra] Configured email service with AgentMail')
+    } else {
+      console.warn('[Chakra] Email service not configured - missing AGENTMAIL_API_KEY or SYSTEM_INBOX_ID')
+    }
+
+    ipcMain.handle('chakra:send-otp-email', async (_event, payload: { email: string; otp: string }) => {
+      try {
+        const result = await sendEmail({
+          to: [payload.email],
+          subject: '[Chakra] Password Reset OTP',
+          templateName: 'otp-email',
+          data: { otpCode: payload.otp, expiryMinutes: 5 }
+        })
+        return { success: result.success, error: result.error }
+      } catch (error) {
+        console.error('[Chakra] Failed to send OTP email:', error)
+        return { success: false, error: (error as Error).message }
+      }
+    })
+    console.info('[Chakra] Registered chakra:send-otp-email IPC handler')
+  } catch (error) {
+    console.warn('[Chakra] Could not register email service IPC handlers:', error)
   }
 
   // Ensure SQLite runtime config snapshot exists.

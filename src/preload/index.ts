@@ -46,7 +46,13 @@ const api = {
     forgotPassword: (email: string) =>
       electronAPI.ipcRenderer.invoke('auth:forgot-password', { email }),
     resetPassword: (newPassword: string) =>
-      electronAPI.ipcRenderer.invoke('auth:reset-password', { newPassword })
+      electronAPI.ipcRenderer.invoke('auth:reset-password', { newPassword }),
+    verifyCode: (code: string, hash: string, expiryTimestamp?: number) =>
+      electronAPI.ipcRenderer.invoke('auth:verify-code', { code, hash, expiryTimestamp }),
+    verifyOtp: (otp: string) =>
+      electronAPI.ipcRenderer.invoke('auth:verify-otp', { otp }),
+    sendOtpEmail: (email: string, otp: string) =>
+      electronAPI.ipcRenderer.invoke('chakra:send-otp-email', { email, otp })
   },
   googleSheets: {
     getAuthStatus: () => electronAPI.ipcRenderer.invoke('chakra:google-auth-status'),

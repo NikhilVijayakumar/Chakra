@@ -12,11 +12,14 @@ import {
   ModuleRouteGuard,
   PublicOnlyGuard
 } from 'prana/ui/components/AuthGuard'
-import { ForgotPasswordContainer } from 'prana/ui/authentication/view/ForgotPasswordContainer'
-import { ResetPasswordContainer } from 'prana/ui/authentication/view/ResetPasswordContainer'
+import { ResetPasswordContainer as PranaResetPasswordContainer } from 'prana/ui/authentication/view/ResetPasswordContainer'
 import { AccessDeniedContainer } from 'prana/ui/authentication/view/AccessDeniedContainer'
-import { SplashContainerOverride as SplashContainer } from './features/splash-override/view/SplashContainerOverride'
-import { LoginContainerOverride as LoginContainer } from './features/auth-override/view/LoginContainerOverride'
+import { BootContainer } from './features/boot-feature/view/BootContainer'
+import { EnhancedLoginContainer } from './features/authentication/view/EnhancedLoginContainer'
+import { ForgotPasswordContainer } from './features/authentication/view/ForgotPasswordContainer'
+import { HomeContainer } from './features/dashboard/view/HomeContainer'
+import { AppInstallContainer } from './features/app-install/view/AppInstallContainer'
+import { VirtualDriveContainer } from './features/virtual-drive/view/VirtualDriveContainer'
 import { volatileSessionStore } from 'prana/ui/state/volatileSessionStore'
 import { LifecycleProvider } from 'prana/ui/state/LifecycleProvider'
 import { setManifestProvider } from 'prana/ui/constants/manifestBridge'
@@ -265,8 +268,9 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
           <HashRouter>
             <Suspense fallback={<RouteLoadingFallback />}>
               <Routes>
-                {/* Boot */}
-                <Route path="/splash" element={<SplashContainer />} />
+                {/* Boot — Platform initialization with validation */}
+                <Route path="/splash" element={<BootContainer />} />
+                <Route path="/boot" element={<BootContainer />} />
                 <Route path="/dependency-check" element={<DependencyCheckContainerComponent />} />
                 <Route path="/" element={<Navigate to="/splash" replace />} />
                 {/* Pre-auth — no session required */}
@@ -275,7 +279,7 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
                   element={
                     <PublicOnlyGuard>
                       <BrandedPreAuthLayout>
-                        <LoginContainer />
+                        <EnhancedLoginContainer />
                       </BrandedPreAuthLayout>
                     </PublicOnlyGuard>
                   }
@@ -295,7 +299,7 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
                   element={
                     <PublicOnlyGuard>
                       <BrandedPreAuthLayout>
-                        <ResetPasswordContainer />
+                        <PranaResetPasswordContainer />
                       </BrandedPreAuthLayout>
                     </PublicOnlyGuard>
                   }
@@ -312,6 +316,11 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
                 />
                 {/* Authenticated routes — guarded and require Lifecycle */}
                 <Route element={<LifecycleWrapper />}>
+                  {/* New UI Screens */}
+                  <Route path="/home" element={<HomeContainer />} />
+                  <Route path="/app-install" element={<AppInstallContainer />} />
+                  <Route path="/virtual-drive" element={<VirtualDriveContainer />} />
+                  
                   <Route
                     path="/apps"
                     element={
