@@ -8,7 +8,7 @@ COMMON_RULES = Path("rules").resolve()
 
 # Skill Target Paths
 SKILL_TARGETS = {
-    "Antigravity": Path(".agent/skills"),
+    "Antigravity": Path(".agents/skills"),
     "Copilot": Path(".github/skills"),
     "Claude": Path(".claude/skills"),
     "OpenCode": Path(".opencode/skills"),
@@ -17,7 +17,7 @@ SKILL_TARGETS = {
 
 # Rule Target Paths
 RULE_TARGETS = {
-    "Antigravity": Path(".agent/rules"),
+    "Antigravity": Path(".agents/rules"),
     "Copilot": Path(".github/rules"),
     "Claude": Path("CLAUDE.md"),
     "OpenCode": Path("AGENTS.md"),

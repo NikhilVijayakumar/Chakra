@@ -7,7 +7,7 @@ COMMON_RULES = Path("rules").resolve()
 
 # Source Paths to Extract From
 SKILL_SOURCES = {
-    "Antigravity": Path(".agent/skills"),
+    "Antigravity": Path(".agents/skills"),
     "Copilot": Path(".github/skills"),
     "Claude": Path(".claude/skills"),
     "OpenCode": Path(".opencode/skills"),
@@ -15,7 +15,7 @@ SKILL_SOURCES = {
 }
 
 RULE_SOURCES = {
-    "Antigravity": Path(".agent/rules"),
+    "Antigravity": Path(".agents/rules"),
     "Copilot": Path(".github/rules"),
     "Claude": Path(".claude/rules")
 }

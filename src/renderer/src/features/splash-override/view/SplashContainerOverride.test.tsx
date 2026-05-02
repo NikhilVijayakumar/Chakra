@@ -1,72 +1,46 @@
 // @vitest-environment jsdom
-import React from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, waitFor } from '@testing-library/react'
+import { act, cleanup, render, screen } from '@testing-library/react'
 
-const { navigateMock, hasSessionMock } = vi.hoisted(() => ({
-  navigateMock: vi.fn(),
-  hasSessionMock: vi.fn()
+const { navigateMock } = vi.hoisted(() => ({
+  navigateMock: vi.fn()
 }))
 
 vi.mock('react-router-dom', () => ({
   useNavigate: () => navigateMock
 }))
 
-vi.mock('prana/ui/authentication/state/volatileSessionStore', () => ({
-  volatileSessionStore: {
-    hasSession: hasSessionMock
-  }
-}))
-
-vi.mock('../viewmodel/useDhiSplashViewModel', () => ({
-  useDhiSplashViewModel: (handleComplete: () => void, _handleSshFailure: () => void) => {
-    React.useEffect(() => {
-      handleComplete()
-    }, [handleComplete])
-
-    return {
-      stages: [],
-      handleRetry: vi.fn(),
-      isFatalActionableError: false,
-      currentStepIndex: 0
-    }
-  }
-}))
-
-vi.mock('./SplashViewOverride', () => ({
-  SplashViewOverride: () => <div data-testid="splash-view">Splash</div>
-}))
-
 import { SplashContainerOverride } from './SplashContainerOverride'
 
 describe('SplashContainerOverride', () => {
   beforeEach(() => {
+    vi.useFakeTimers()
     cleanup()
     navigateMock.mockReset()
-    hasSessionMock.mockReset()
   })
 
   afterEach(() => {
+    vi.runOnlyPendingTimers()
+    vi.useRealTimers()
     cleanup()
   })
 
-  it('routes to login when there is no session', async () => {
-    hasSessionMock.mockReturnValue(false)
-
+  it('shows the mockup hero stage first', () => {
     render(<SplashContainerOverride />)
 
-    await waitFor(() => {
-      expect(navigateMock).toHaveBeenCalledWith('/login')
-    })
+    expect(screen.getByText('CHAKRA PLATFORM')).toBeTruthy()
+    expect(screen.getByTestId('hero-theme-toggle')).toBeTruthy()
+    expect(screen.getByTestId('hero-letter-B-3')).toBeTruthy()
+    expect(screen.getByTestId('hero-letter-V-5')).toBeTruthy()
   })
 
-  it('routes to the first authenticated route when a session exists', async () => {
-    hasSessionMock.mockReturnValue(true)
-
+  it('navigates to boot after the hero sequence completes', async () => {
     render(<SplashContainerOverride />)
 
-    await waitFor(() => {
-      expect(navigateMock).toHaveBeenCalledWith('/apps')
+    await act(async () => {
+      await vi.runAllTimersAsync()
     })
+
+    expect(navigateMock).toHaveBeenCalledWith('/boot', { replace: true })
   })
 })

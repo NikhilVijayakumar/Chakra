@@ -20,6 +20,7 @@ import { ForgotPasswordContainer } from './features/authentication/view/ForgotPa
 import { HomeContainer } from './features/dashboard/view/HomeContainer'
 import { AppInstallContainer } from './features/app-install/view/AppInstallContainer'
 import { VirtualDriveContainer } from './features/virtual-drive/view/VirtualDriveContainer'
+import { SplashContainerOverride } from './features/splash-override/view/SplashContainerOverride'
 import { volatileSessionStore } from 'prana/ui/state/volatileSessionStore'
 import { LifecycleProvider } from 'prana/ui/state/LifecycleProvider'
 import { setManifestProvider } from 'prana/ui/constants/manifestBridge'
@@ -269,7 +270,7 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
             <Suspense fallback={<RouteLoadingFallback />}>
               <Routes>
                 {/* Boot — Platform initialization with validation */}
-                <Route path="/splash" element={<BootContainer />} />
+                <Route path="/splash" element={<SplashContainerOverride />} />
                 <Route path="/boot" element={<BootContainer />} />
                 <Route path="/dependency-check" element={<DependencyCheckContainerComponent />} />
                 <Route path="/" element={<Navigate to="/splash" replace />} />

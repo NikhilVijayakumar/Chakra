@@ -261,31 +261,7 @@ export const EnhancedLoginView: FC<EnhancedLoginViewProps> = ({
           Forgot password?
         </Button>
 
-        {/* Demo credentials - only in dev/staging */}
-        {process.env.NODE_ENV !== 'production' && (
-          <Box
-            sx={{
-              p: 2,
-              borderRadius: 1,
-              bgcolor: theme.palette.action.hover,
-              border: `1px solid ${theme.palette.divider}`,
-              fontSize: '0.75rem'
-            }}
-          >
-            <Typography variant="caption" sx={{ fontWeight: 600, display: 'block' }}>
-              Demo Credentials:
-            </Typography>
-            <Typography variant="caption" sx={{ display: 'block', mt: 0.5 }}>
-              Email: admin@bavans.com
-            </Typography>
-            <Typography variant="caption" sx={{ display: 'block' }}>
-              Password: Password123!
-            </Typography>
-            <Typography variant="caption" sx={{ fontStyle: 'italic', display: 'block', mt: 0.5 }}>
-              Will lock out for 30s after 3 failed attempts.
-            </Typography>
-          </Box>
-        )}
+        {/* Demo credentials removed for security */}
       </motion.div>
     </Box>
   )

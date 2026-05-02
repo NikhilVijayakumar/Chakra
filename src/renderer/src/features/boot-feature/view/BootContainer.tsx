@@ -1,6 +1,5 @@
-import { FC } from 'react'
+import { FC, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { volatileSessionStore } from 'prana/ui/authentication/state/volatileSessionStore'
 import { useBootViewModel } from '../viewmodel/useBootViewModel'
 import { BootView } from './BootView'
 
@@ -15,15 +14,19 @@ import { BootView } from './BootView'
 export const BootContainer: FC = () => {
   const navigate = useNavigate()
 
-  const handleComplete = () => {
-    const hasSession = volatileSessionStore.hasSession()
+  useEffect(() => {
+    const maxBootTime = setTimeout(() => {
+      console.warn('[Chakra] Boot sequence exceeded maximum time. Falling back to login.')
+      navigate('/login', { replace: true })
+    }, 30000)
 
-    if (!hasSession) {
-      navigate('/login')
-      return
+    return () => {
+      clearTimeout(maxBootTime)
     }
+  }, [navigate])
 
-    navigate('/apps')
+  const handleComplete = () => {
+    navigate('/login', { replace: true })
   }
 
   const handleSshFailure = () => {
