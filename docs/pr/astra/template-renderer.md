@@ -335,3 +335,56 @@ await sendEmail({
 - [ ] Export from `src/lib.ts`
 - [ ] Add unit tests for template renderer
 - [ ] Test integration with Chakra + Prana email flow
+
+## 9. Repro & Fix (Chakra)
+
+**Issue encountered**
+
+While building Chakra, the following runtime error was observed when importing the template renderer from Astra:
+
+```
+Error [ERR_PACKAGE_PATH_NOT_EXPORTED]: Package subpath './services/templateRenderer' is not defined by "exports" in E:\\Python\\Chakra\\node_modules\\astra\\package.json
+```
+
+**Where it occurred (consumer)**
+
+- `src/main/services/templateRenderer.ts` in the Chakra codebase imported the utility via a deep import:
+
+```ts
+import { configureTemplateRenderer, renderTemplate } from 'astra/services/templateRenderer'
+```
+
+**Local fix applied in this repo**
+
+To avoid the package subpath export error, the Chakra import was changed to use Astra's public entrypoint (root export) instead of the deep subpath:
+
+```ts
+import { configureTemplateRenderer, renderTemplate } from 'astra'
+```
+
+This change was applied in `src/main/services/templateRenderer.ts` and verified by installing dependencies and running a full build (`npm install` then `npm run build`), which completed successfully.
+
+**Recommended upstream action (Astra)**
+
+Prefer one of the following to make the API consumable without deep imports:
+
+- Add explicit `exports` entries in `astra/package.json` for the service subpaths, for example:
+
+```json
+"exports": {
+    "./services/templateRenderer": {
+        "types": "./dist/lib.d.ts",
+        "import": "./dist/services/templateRenderer.js",
+        "require": "./dist/services/templateRenderer.cjs.js"
+    },
+    "./services/*": {
+        "types": "./dist/lib.d.ts",
+        "import": "./dist/services/*.js",
+        "require": "./dist/services/*.cjs.js"
+    }
+}
+```
+
+- Or, re-export the `configureTemplateRenderer` and `renderTemplate` symbols from the package root (recommended for a stable public surface): add exports in `src/lib.ts` and ensure they are included in the root `exports` mapping.
+
+If you'd like, I can open an upstream issue and a small PR against `NikhilVijayakumar/astra` that either adds the `./services/*` exports or re-exports the symbols from the package root.
