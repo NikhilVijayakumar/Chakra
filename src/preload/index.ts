@@ -52,7 +52,15 @@ const api = {
     verifyOtp: (otp: string) =>
       electronAPI.ipcRenderer.invoke('auth:verify-otp', { otp }),
     sendOtpEmail: (email: string, otp: string) =>
-      electronAPI.ipcRenderer.invoke('chakra:send-otp-email', { email, otp })
+      electronAPI.ipcRenderer.invoke('chakra:send-otp-email', { email, otp }),
+    chakraForgotPassword: (email: string) =>
+      electronAPI.ipcRenderer.invoke('chakra:forgot-password', { email }),
+    chakraVerifyOtp: (email: string, otp: string) =>
+      electronAPI.ipcRenderer.invoke('chakra:verify-otp', { email, otp }),
+    chakraResetPassword: (email: string, newPassword: string) =>
+      electronAPI.ipcRenderer.invoke('chakra:reset-password', { email, newPassword }),
+    chakraValidateEmployeeEmail: (email: string) =>
+      electronAPI.ipcRenderer.invoke('chakra:validate-employee-email', { email })
   },
   googleSheets: {
     getAuthStatus: () => electronAPI.ipcRenderer.invoke('chakra:google-auth-status'),
@@ -525,6 +533,25 @@ const api = {
     },
     clearEscalation: (payload: { taskId: string }) =>
       electronAPI.ipcRenderer.invoke('app:escalation-cleared', payload)
+  },
+  apps: {
+    syncFromSheets: () => electronAPI.ipcRenderer.invoke('chakra:sync-app-sheets'),
+    getUserApps: (email: string) =>
+      electronAPI.ipcRenderer.invoke('chakra:get-user-apps', { email }),
+    install: (appId: string, appName: string, cloneUrl: string) =>
+      electronAPI.ipcRenderer.invoke('chakra:install-app', { appId, appName, cloneUrl }),
+    uninstall: (appId: string) =>
+      electronAPI.ipcRenderer.invoke('chakra:uninstall-app', { appId }),
+    launchWebview: (appId: string) =>
+      electronAPI.ipcRenderer.invoke('chakra:launch-webview', { appId }),
+    exitWebview: () =>
+      electronAPI.ipcRenderer.invoke('chakra:exit-webview'),
+    onInstallProgress: (callback: (data: { step: string; percent: number; log: string }) => void) => {
+      const listener = (_event: unknown, data: unknown) =>
+        callback(data as { step: string; percent: number; log: string })
+      electronAPI.ipcRenderer.on('chakra:install-progress', listener)
+      return () => electronAPI.ipcRenderer.removeListener('chakra:install-progress', listener)
+    }
   },
   workOrders: {
     submitDirectorRequest: (payload: {

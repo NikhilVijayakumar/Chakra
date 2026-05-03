@@ -12,7 +12,14 @@ export default defineConfig(() => {
       plugins: [externalizeDepsPlugin({ exclude: ['prana'] })],
       build: {
         rollupOptions: {
-          external: [/^jsdom($|\/)/, /^css-tree($|\/)/, /^cssstyle($|\/)/],
+          external: [
+            /^jsdom($|\/)/,
+            /^css-tree($|\/)/,
+            /^cssstyle($|\/)/,
+            'bufferutil',
+            'utf-8-validate',
+            'better-sqlite3'
+          ],
           input: {
             index: resolve(__dirname, 'src/main/index.ts')
           }

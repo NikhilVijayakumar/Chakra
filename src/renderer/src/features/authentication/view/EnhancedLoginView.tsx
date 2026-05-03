@@ -1,7 +1,9 @@
 import { FC, useState } from 'react'
-import { Box, Button, TextField, Typography, CircularProgress, Alert, useTheme, useMediaQuery } from '@mui/material'
+import { Box, Button, TextField, Typography, CircularProgress, Alert, useTheme, useMediaQuery, InputAdornment, IconButton } from '@mui/material'
 import { motion } from 'framer-motion'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
+import Visibility from '@mui/icons-material/Visibility'
+import VisibilityOff from '@mui/icons-material/VisibilityOff'
 
 interface EnhancedLoginViewProps {
   isSubmitting: boolean
@@ -46,6 +48,7 @@ export const EnhancedLoginView: FC<EnhancedLoginViewProps> = ({
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const [emailError, setEmailError] = useState('')
   const [passwordError, setPasswordError] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
 
   const validateEmail = (value: string) => {
     if (!value) {
@@ -64,14 +67,6 @@ export const EnhancedLoginView: FC<EnhancedLoginViewProps> = ({
   const validatePassword = (value: string) => {
     if (!value) {
       setPasswordError('Password is required')
-      return false
-    }
-    // At least 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 symbol
-    const pwRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/
-    if (!pwRegex.test(value)) {
-      setPasswordError(
-        'Password must be at least 8 characters with uppercase, lowercase, number, and symbol'
-      )
       return false
     }
     setPasswordError('')
@@ -212,7 +207,7 @@ export const EnhancedLoginView: FC<EnhancedLoginViewProps> = ({
 
         <TextField
           label="Password"
-          type="password"
+          type={showPassword ? 'text' : 'password'}
           placeholder="Enter password"
           value={password}
           onChange={(e) => {
@@ -225,6 +220,20 @@ export const EnhancedLoginView: FC<EnhancedLoginViewProps> = ({
           disabled={isSubmitting || isLocked}
           fullWidth
           sx={{ mb: 2 }}
+          InputProps={{
+            endAdornment: (
+              <InputAdornment position="end">
+                <IconButton
+                  onClick={() => setShowPassword((v) => !v)}
+                  edge="end"
+                  tabIndex={-1}
+                  aria-label="toggle password visibility"
+                >
+                  {showPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                </IconButton>
+              </InputAdornment>
+            )
+          }}
         />
 
         {attemptsRemaining > 0 && !isLocked && (

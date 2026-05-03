@@ -1,7 +1,9 @@
-import { FC } from 'react'
-import { Box, Button, TextField, Typography, Alert, CircularProgress, useTheme, useMediaQuery } from '@mui/material'
+import { FC, useState } from 'react'
+import { Box, Button, TextField, Typography, Alert, CircularProgress, useTheme, useMediaQuery, InputAdornment, IconButton } from '@mui/material'
 import { motion } from 'framer-motion'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
+import Visibility from '@mui/icons-material/Visibility'
+import VisibilityOff from '@mui/icons-material/VisibilityOff'
 
 type ForgotPasswordStep = 'email' | 'verification' | 'reset'
 
@@ -17,6 +19,7 @@ interface ForgotPasswordViewProps {
   emailError: string | null
   verificationCodeError: string | null
   passwordError: string | null
+  resetStatusMessage: string | null
   onEmailChange: (email: string) => void
   onVerificationCodeChange: (code: string) => void
   onNewPasswordChange: (password: string) => void
@@ -48,6 +51,7 @@ export const ForgotPasswordView: FC<ForgotPasswordViewProps> = ({
   emailError,
   verificationCodeError,
   passwordError,
+  resetStatusMessage,
   onEmailChange,
   onVerificationCodeChange,
   onNewPasswordChange,
@@ -58,6 +62,8 @@ export const ForgotPasswordView: FC<ForgotPasswordViewProps> = ({
 }) => {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   return (
     <Box
@@ -225,17 +231,31 @@ export const ForgotPasswordView: FC<ForgotPasswordViewProps> = ({
           <>
             <TextField
               label="New Password"
-              type="password"
+              type={showNewPassword ? 'text' : 'password'}
               placeholder="Enter new password"
               value={newPassword}
               onChange={(e) => onNewPasswordChange(e.target.value)}
               disabled={isSubmitting}
               fullWidth
               sx={{ mb: 2 }}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setShowNewPassword((v) => !v)}
+                      edge="end"
+                      tabIndex={-1}
+                      aria-label="toggle new password visibility"
+                    >
+                      {showNewPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                    </IconButton>
+                  </InputAdornment>
+                )
+              }}
             />
             <TextField
               label="Confirm Password"
-              type="password"
+              type={showConfirmPassword ? 'text' : 'password'}
               placeholder="Confirm password"
               value={confirmPassword}
               onChange={(e) => onConfirmPasswordChange(e.target.value)}
@@ -244,6 +264,20 @@ export const ForgotPasswordView: FC<ForgotPasswordViewProps> = ({
               disabled={isSubmitting}
               fullWidth
               sx={{ mb: 3 }}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setShowConfirmPassword((v) => !v)}
+                      edge="end"
+                      tabIndex={-1}
+                      aria-label="toggle confirm password visibility"
+                    >
+                      {showConfirmPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                    </IconButton>
+                  </InputAdornment>
+                )
+              }}
             />
             <Typography variant="caption" sx={{ mb: 3, display: 'block', color: theme.palette.text.secondary }}>
               Password must be at least 8 characters with uppercase, lowercase, number, and symbol
@@ -258,6 +292,14 @@ export const ForgotPasswordView: FC<ForgotPasswordViewProps> = ({
             >
               {isSubmitting ? <CircularProgress size={24} /> : 'Reset Password'}
             </Button>
+            {isSubmitting && resetStatusMessage && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1.5 }}>
+                <CircularProgress size={14} />
+                <Typography variant="caption" sx={{ color: theme.palette.text.secondary }}>
+                  {resetStatusMessage}
+                </Typography>
+              </Box>
+            )}
           </>
         )}
       </motion.div>

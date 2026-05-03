@@ -3,25 +3,38 @@ import fs from 'fs/promises'
 import { join } from 'node:path'
 import { app } from 'electron'
 
-let templatesPath: string | null = null
+let astraTemplatesPath: string | null = null
+let localTemplatesPath: string | null = null
 
 export const initTemplateRenderer = (): void => {
-  templatesPath = app.isPackaged
+  astraTemplatesPath = app.isPackaged
     ? join(process.resourcesPath, 'app.asar.unpacked', 'node_modules', 'astra', 'src', 'templates')
     : join(__dirname, '../../node_modules/astra/src/templates')
 
-  console.log('[Chakra] Template renderer configured with path:', templatesPath)
+  localTemplatesPath = app.isPackaged
+    ? join(process.resourcesPath, 'app.asar.unpacked', 'templates')
+    : join(__dirname, '../../src/templates')
+
+  console.log('[Chakra] Template renderer configured with local path:', localTemplatesPath, 'and astra path:', astraTemplatesPath)
 }
 
 export const renderEmailTemplate = async (
   templateName: string,
   data: Record<string, unknown>
 ): Promise<string> => {
-  if (!templatesPath) {
+  if (!astraTemplatesPath || !localTemplatesPath) {
     throw new Error('Template renderer not initialized')
   }
 
-  const filePath = join(templatesPath, `${templateName}.hbs`)
+  const localFilePath = join(localTemplatesPath, `${templateName}.hbs`)
+  const astraFilePath = join(astraTemplatesPath, `${templateName}.hbs`)
+
+  let filePath = localFilePath
+  try {
+    await fs.access(localFilePath)
+  } catch {
+    filePath = astraFilePath
+  }
 
   try {
     const source = await fs.readFile(filePath, 'utf-8')
@@ -29,7 +42,7 @@ export const renderEmailTemplate = async (
     return compiled(data)
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    console.error('[Chakra] Template render error:', message)
+    console.error('[Chakra] Template render error for', filePath, ':', message)
     throw new Error(message)
   }
 }

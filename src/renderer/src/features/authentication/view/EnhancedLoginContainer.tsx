@@ -1,5 +1,6 @@
 import { FC, useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { volatileSessionStore } from 'prana/ui/state/volatileSessionStore'
 import { EnhancedLoginView } from './EnhancedLoginView'
 
 interface LoginState {
@@ -98,15 +99,23 @@ export const EnhancedLoginContainer: FC = () => {
         throw new Error('Email and password are required')
       }
 
-      // Call auth API
-      // TODO: Replace with actual API call when backend is ready
-      const result = await simulateAuthCall(state.email, state.password)
+      // Call auth API using IPC
+      const result = await window.api.auth.loginWithSheets(state.email, state.password)
 
-      if (result.success) {
+      if (result.success && result.sessionToken) {
+        // Update session state so route guards allow navigation
+        volatileSessionStore.setSessionToken(result.sessionToken)
+
+        // Store employee email for home screen app access queries
+        localStorage.setItem('chakra_employee_email', state.email.trim().toLowerCase())
+
         // Clear lockout on success
         localStorage.removeItem('chakra_lockout_end')
         localStorage.removeItem('chakra_login_attempts')
-        navigate('/apps')
+        navigate('/home')
+      } else if (result.success) {
+        // Edge case: success but no token
+        throw new Error('Authentication succeeded but no session token was provided')
       } else {
         // Increment failed attempts
         const attempts = parseInt(localStorage.getItem('chakra_login_attempts') || '0', 10)
@@ -171,29 +180,3 @@ export const EnhancedLoginContainer: FC = () => {
   )
 }
 
-/**
- * Simulates authentication API call
- * Replace with actual backend call when available
- * 
- * Expected API:
- * POST /api/auth/login
- * Body: { email, password }
- * Response: { success: boolean, sessionToken?: string, message?: string }
- */
-async function simulateAuthCall(
-  email: string,
-  password: string
-): Promise<{ success: boolean; message?: string }> {
-  // Simulate network delay
-  await new Promise((r) => setTimeout(r, 800))
-
-  // Demo credentials (development only)
-  const DEMO_EMAIL = 'admin@bavans.com'
-  const DEMO_PASSWORD = 'Password123!'
-
-  if (email === DEMO_EMAIL && password === DEMO_PASSWORD) {
-    return { success: true }
-  }
-
-  return { success: false, message: 'Invalid email or password' }
-}

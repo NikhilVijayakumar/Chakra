@@ -1,169 +1,88 @@
 import { FC, useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { AppInstallView } from './AppInstallView'
+import { AppInstallView, InstallPhase } from './AppInstallView'
 
-type InstallStep = 'select' | 'confirm' | 'installing' | 'complete'
-
-interface InstallState {
-  step: InstallStep
-  selectedAppId: string | null
-  selectedAppName: string | null
-  installProgress: number
-  error: string | null
-  isLoading: boolean
+interface InstallRouteState {
+  appId: string
+  appName: string
+  cloneUrl: string
 }
 
-/**
- * AppInstallContainer
- * 
- * Manages installation wizard state:
- * 1. App selection from list
- * 2. Installation confirmation
- * 3. Installation execution with progress
- * 4. Completion screen
- * 
- * TODO: Implement actual app installation via IPC
- */
 export const AppInstallContainer: FC = () => {
   const navigate = useNavigate()
   const location = useLocation()
-  const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const state = (location.state ?? {}) as Partial<InstallRouteState>
 
-  const [state, setState] = useState<InstallState>({
-    step: 'select',
-    selectedAppId: location.state?.appId || null,
-    selectedAppName: location.state?.appName || null,
-    installProgress: 0,
-    error: null,
-    isLoading: false
-  })
+  const { appId = '', appName = 'App', cloneUrl = '' } = state
 
-  // If app was pre-selected, jump to confirm step
+  const [phase, setPhase] = useState<InstallPhase>('installing')
+  const [progress, setProgress] = useState(0)
+  const [currentLog, setCurrentLog] = useState('> Preparing installation...')
+  const [error, setError] = useState<string | null>(null)
+
+  const started = useRef(false)
+
   useEffect(() => {
-    if (state.selectedAppId && state.step === 'select') {
-      setState((prev) => ({ ...prev, step: 'confirm' }))
+    if (started.current || !appId || !cloneUrl) return
+    started.current = true
+
+    // Subscribe to progress events from main process
+    const unsubscribe = window.api.apps.onInstallProgress(({ step, percent, log }) => {
+      setProgress(percent)
+      setCurrentLog(log)
+      if (step === 'complete') {
+        setPhase('complete')
+      }
+    })
+
+    // Start installation
+    window.api.apps.install(appId, appName, cloneUrl).then((result) => {
+      unsubscribe()
+      if (!result.success) {
+        setPhase('error')
+        setError(result.error ?? 'Installation failed')
+        setCurrentLog(`> Error: ${result.error ?? 'unknown'}`)
+        setProgress(0)
+      }
+      // success path is handled by 'complete' progress event above
+    }).catch((err: unknown) => {
+      unsubscribe()
+      const msg = err instanceof Error ? err.message : 'Unknown error'
+      setPhase('error')
+      setError(msg)
+      setCurrentLog(`> Error: ${msg}`)
+    })
+
+    return () => {
+      // best-effort unsubscribe if component unmounts early
+      try { unsubscribe() } catch { /* ignore */ }
     }
-  }, [])
+  }, [appId, appName, cloneUrl])
 
-  const handleSelectApp = (appId: string, appName: string) => {
-    setState((prev) => ({
-      ...prev,
-      selectedAppId: appId,
-      selectedAppName: appName
-    }))
-  }
-
-  const handleConfirmInstall = () => {
-    setState((prev) => ({ ...prev, step: 'confirm' }))
-  }
-
-  const handleStartInstall = async () => {
-    setState((prev) => ({
-      ...prev,
-      step: 'installing',
-      isLoading: true,
-      installProgress: 0,
-      error: null
-    }))
-
-    try {
-      // TODO: Call IPC to start installation
-      // window.api.apps.install(state.selectedAppId)
-
-      // Simulate installation progress
-      let progress = 0
-      progressIntervalRef.current = setInterval(() => {
-        progress += Math.random() * 15
-        if (progress >= 100) {
-          progress = 100
-          if (progressIntervalRef.current) {
-            clearInterval(progressIntervalRef.current)
-          }
-          completeInstallation()
-          return
-        }
-        setState((prev) => ({ ...prev, installProgress: Math.min(progress, 99) }))
-      }, 500)
-    } catch (err) {
-      setState((prev) => ({
-        ...prev,
-        isLoading: false,
-        error: err instanceof Error ? err.message : 'Installation failed'
-      }))
+  // Redirect to home if no app info was passed
+  useEffect(() => {
+    if (!appId || !cloneUrl) {
+      navigate('/home', { replace: true })
     }
-  }
+  }, [appId, cloneUrl, navigate])
 
-  const completeInstallation = async () => {
-    try {
-      // Simulate final step
-      await new Promise((r) => setTimeout(r, 500))
-      setState((prev) => ({
-        ...prev,
-        step: 'complete',
-        installProgress: 100,
-        isLoading: false
-      }))
-    } catch (err) {
-      setState((prev) => ({
-        ...prev,
-        isLoading: false,
-        error: err instanceof Error ? err.message : 'Failed to complete installation'
-      }))
-    }
-  }
-
-  const handleComplete = () => {
+  const handleCancel = () => {
     navigate('/home')
   }
 
-  const handleBack = () => {
-    if (progressIntervalRef.current) {
-      clearInterval(progressIntervalRef.current)
-    }
-
-    if (state.step === 'select') {
-      navigate('/home')
-    } else if (state.step === 'confirm') {
-      setState((prev) => ({ ...prev, step: 'select' }))
-    } else if (state.step === 'installing') {
-      // Allow cancellation only if not too far along
-      if (state.installProgress < 90) {
-        setState((prev) => ({ ...prev, step: 'confirm' }))
-      }
-    } else if (state.step === 'complete') {
-      navigate('/home')
-    }
-  }
-
-  const getActiveStep = (): number => {
-    switch (state.step) {
-      case 'select':
-        return 0
-      case 'confirm':
-        return 1
-      case 'installing':
-        return 2
-      case 'complete':
-        return 3
-      default:
-        return 0
-    }
+  const handleDone = () => {
+    navigate('/home')
   }
 
   return (
     <AppInstallView
-      step={state.step}
-      activeStep={getActiveStep()}
-      selectedAppId={state.selectedAppId}
-      selectedAppName={state.selectedAppName}
-      installProgress={state.installProgress}
-      error={state.error}
-      isLoading={state.isLoading}
-      onSelectApp={handleSelectApp}
-      onConfirmInstall={handleConfirmInstall}
-      onStartInstall={handleStartInstall}
-      onComplete={handleComplete}
-      onBack={handleBack}
+      appName={appName}
+      phase={phase}
+      progress={progress}
+      currentLog={currentLog}
+      error={error}
+      onCancel={handleCancel}
+      onDone={handleDone}
     />
   )
 }

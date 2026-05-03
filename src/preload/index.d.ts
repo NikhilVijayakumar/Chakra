@@ -1482,12 +1482,29 @@ interface HrSyncResult {
   errors: string[]
 }
 
+interface ChakraAppRecord {
+  id: string
+  name: string | null
+  cloneUrl: string | null
+  commitHash: string | null
+  status: string | null
+  accessVia: 'direct' | 'team'
+}
+
+interface ChakraUserAppsResult {
+  installed: ChakraAppRecord[]
+  available: ChakraAppRecord[]
+}
+
 interface DhiApi {
   [key: string]: unknown
   googleSheets: {
     getAuthStatus: () => Promise<GoogleSheetsAuthStatus>
     setEmployeeSheetId: (employeeSheetId: string) => Promise<void>
     sync: () => Promise<HrSyncResult>
+  }
+  chakra: {
+    getUserApps: (employeeId: string) => Promise<ChakraUserAppsResult>
   }
   app: {
     checkHostDependencies: () => Promise<{ passed: boolean; diagnostics: HostDependencyDiagnostic[] }>
@@ -1508,11 +1525,16 @@ interface DhiApi {
   auth: {
     getStatus: () => Promise<AuthStatus>
     login: (email: string, password: string) => Promise<AuthLoginResult>
+    loginWithSheets: (email: string, password: string) => Promise<AuthLoginResult>
     forgotPassword: (email: string) => Promise<ForgotPasswordResult>
     resetPassword: (newPassword: string) => Promise<ResetPasswordResult>
     verifyCode: (code: string, hash: string, expiryTimestamp?: number) => Promise<CodeVerifyResult>
     verifyOtp: (otp: string) => Promise<OtpVerificationResult>
     sendOtpEmail: (email: string, otp: string) => Promise<{ success: boolean; error?: string }>
+    chakraForgotPassword: (email: string) => Promise<{ success: boolean; reason?: string }>
+    chakraVerifyOtp: (email: string, otp: string) => Promise<{ success: boolean; reason?: string }>
+    chakraResetPassword: (email: string, newPassword: string) => Promise<{ success: boolean; reason?: string; detail?: string }>
+    chakraValidateEmployeeEmail: (email: string) => Promise<{ success: boolean; reason?: string }>
   }
   settings: {
     load: () => Promise<SettingsPayload>
@@ -1946,6 +1968,42 @@ interface DhiApi {
     saveKpiToVault: (companyId: string, kpi: unknown) => Promise<any>
     saveDataInputToVault: (companyId: string, dataInput: unknown) => Promise<any>
     saveProductToVault: (companyId: string, product: unknown) => Promise<any>
+  }
+  apps: {
+    syncFromSheets: () => Promise<{
+      success: boolean
+      appsLoaded: number
+      appUsersLoaded: number
+      appTeamsLoaded: number
+      teamsLoaded: number
+      employeeTeamsLoaded: number
+      errors: string[]
+    }>
+    getUserApps: (email: string) => Promise<{
+      success: boolean
+      error?: string
+      apps: Array<{
+        id: string
+        name: string
+        cloneUrl: string
+        status: string
+        isInstalled: boolean
+        installPath: string | null
+        installedAt: number | null
+        version: string | null
+      }>
+    }>
+    install: (appId: string, appName: string, cloneUrl: string) => Promise<{
+      success: boolean
+      installPath?: string
+      error?: string
+    }>
+    uninstall: (appId: string) => Promise<{ success: boolean; error?: string }>
+    launchWebview: (appId: string) => Promise<{ success: boolean; error?: string }>
+    exitWebview: () => Promise<{ success: boolean; error?: string }>
+    onInstallProgress: (
+      callback: (data: { step: string; percent: number; log: string }) => void
+    ) => () => void
   }
 }
 

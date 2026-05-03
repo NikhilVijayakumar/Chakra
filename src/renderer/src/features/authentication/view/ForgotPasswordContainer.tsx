@@ -20,31 +20,17 @@ interface ForgotPasswordState {
   passwordError: string | null
 }
 
-const OTP_EXPIRY_MS = 5 * 60 * 1000 // 5 minutes
-
-const generateOtp = (): string => {
-  return Math.floor(100000 + Math.random() * 900000).toString()
-}
-
-const hashOtp = async (otp: string): Promise<string> => {
-  const encoder = new TextEncoder()
-  const data = encoder.encode(otp)
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
-  const hashArray = Array.from(new Uint8Array(hashBuffer))
-  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
-  return hashHex
-}
 
 /**
  * ForgotPasswordContainer
  * 
  * Manages multi-step forgot password flow:
- * 1. User enters email → Prana validates email exists
- * 2. Chakra generates OTP, sends via email, stores hash+expiry
- * 3. User enters code → Chakra verifies via Prana's verifyCode
- * 4. User sets new password → Prana resets password
+ * 1. User enters email → Chakra validates email exists in SQLite
+ * 2. Chakra generates OTP, sends via email, stores hash+expiry in SQLite
+ * 3. User enters code → Chakra verifies via SQLite
+ * 4. User sets new password → Chakra resets password and syncs to Sheets
  * 
- * Uses Prana auth APIs for forgot password flow
+ * Uses Chakra custom APIs for forgot password flow
  */
 export const ForgotPasswordContainer: FC = () => {
   const navigate = useNavigate()
@@ -65,6 +51,8 @@ export const ForgotPasswordContainer: FC = () => {
     verificationCodeError: null,
     passwordError: null
   })
+
+  const [resetStatusMessage, setResetStatusMessage] = useState<string | null>(null)
 
   const validateEmail = (email: string): boolean => {
     if (!email) {
@@ -98,14 +86,9 @@ export const ForgotPasswordContainer: FC = () => {
     return true
   }
 
-  const sendOtpEmail = async (email: string, otp: string): Promise<void> => {
-    try {
-      await window.api.auth.sendOtpEmail(email, otp)
-    } catch (err) {
-      console.error('[OTP_EMAIL_ERROR] Failed to send OTP email:', err)
-      throw new Error('Failed to send verification email')
-    }
-  }
+  // BYPASS_OTP = false: full 3-step OTP flow (email → verify OTP → reset).
+  // Set to true to bypass OTP and go directly email → reset (dev/test only).
+  const BYPASS_OTP = false
 
   const handleStepEmail = async () => {
     if (!validateEmail(state.email)) return
@@ -113,36 +96,41 @@ export const ForgotPasswordContainer: FC = () => {
     setState((prev) => ({ ...prev, isSubmitting: true, error: null }))
 
     try {
-      const result = await window.api.auth.forgotPassword(state.email.trim().toLowerCase())
+      const email = state.email.trim().toLowerCase()
+
+      if (BYPASS_OTP) {
+        // Bypass: just validate email exists and is active, then go straight to reset
+        const result = await window.api.auth.chakraValidateEmployeeEmail(email)
+        if (!result.success) {
+          const errorMessage = result.reason === 'email_mismatch'
+            ? 'Email address not found or inactive'
+            : `Failed to process request: ${result.reason || 'unknown error'}`
+          setState((prev) => ({ ...prev, isSubmitting: false, error: errorMessage, emailError: errorMessage }))
+          return
+        }
+        setState((prev) => ({ ...prev, step: 'reset', isSubmitting: false, error: null, successMessage: null }))
+        return
+      }
+
+      // Full OTP flow (when BYPASS_OTP = false)
+      const result = await window.api.auth.chakraForgotPassword(email)
 
       if (!result.success) {
-        const errorMessage = result.reason === 'email_mismatch' 
-          ? 'Email address not found' 
-          : 'Failed to process request'
-        setState((prev) => ({ 
-          ...prev, 
-          isSubmitting: false, 
+        const errorMessage = result.reason === 'email_mismatch'
+          ? 'Email address not found or inactive'
+          : `Failed to process request: ${result.reason || 'unknown error'}`
+        setState((prev) => ({
+          ...prev,
+          isSubmitting: false,
           error: errorMessage,
           emailError: errorMessage
         }))
         return
       }
 
-      const otp = generateOtp()
-      const codeHash = await hashOtp(otp)
-      const codeExpiry = Date.now() + OTP_EXPIRY_MS
-
-      try {
-        await sendOtpEmail(state.email.trim().toLowerCase(), otp)
-      } catch (emailErr) {
-        console.warn('[OTP] Email send failed, logging OTP for testing:', otp)
-      }
-
       setState((prev) => ({
         ...prev,
         step: 'verification',
-        codeHash,
-        codeExpiry,
         isSubmitting: false,
         successMessage: 'Verification code sent to your email'
       }))
@@ -164,29 +152,18 @@ export const ForgotPasswordContainer: FC = () => {
       return
     }
 
-    if (!state.codeHash || !state.codeExpiry) {
-      setState((prev) => ({
-        ...prev,
-        isSubmitting: false,
-        error: 'No verification code pending. Please restart the process.',
-        step: 'email'
-      }))
-      return
-    }
-
     setState((prev) => ({ ...prev, isSubmitting: true, error: null }))
 
     try {
-      const result = await window.api.auth.verifyCode(
-        state.verificationCode,
-        state.codeHash,
-        state.codeExpiry
+      const result = await window.api.auth.chakraVerifyOtp(
+        state.email.trim().toLowerCase(),
+        state.verificationCode
       )
 
       if (!result.success) {
-        const errorMessage = result.reason === 'code_expired' 
+        const errorMessage = result.reason === 'otp_expired' 
           ? 'Verification code has expired. Please request a new one.'
-          : result.reason === 'invalid_code'
+          : result.reason === 'invalid_otp'
           ? 'Invalid verification code'
           : 'Verification failed'
         
@@ -219,37 +196,34 @@ export const ForgotPasswordContainer: FC = () => {
     if (!validatePassword(state.confirmPassword)) return
 
     if (state.newPassword !== state.confirmPassword) {
-      setState((prev) => ({
-        ...prev,
-        passwordError: 'Passwords do not match'
-      }))
+      setState((prev) => ({ ...prev, passwordError: 'Passwords do not match' }))
       return
     }
 
     setState((prev) => ({ ...prev, isSubmitting: true, error: null }))
+    setResetStatusMessage('Updating password…')
 
     try {
-      const result = await window.api.auth.resetPassword(state.newPassword)
+      const result = await window.api.auth.chakraResetPassword(
+        state.email.trim().toLowerCase(),
+        state.newPassword
+      )
 
       if (!result.success) {
-        const errorMessage = result.reason === 'invalid_password'
-          ? 'Password does not meet requirements'
-          : 'Failed to reset password'
-        
-        setState((prev) => ({
-          ...prev,
-          isSubmitting: false,
-          passwordError: errorMessage
-        }))
+        const errorMessage =
+          result.reason === 'sheets_push_failed'
+            ? `Password saved locally but could not sync to cloud after 3 attempts. Please try again.\n${result.detail ?? ''}`
+            : result.reason === 'invalid_password'
+            ? 'Password does not meet requirements'
+            : 'Failed to reset password'
+
+        setState((prev) => ({ ...prev, isSubmitting: false, passwordError: errorMessage }))
+        setResetStatusMessage(null)
         return
       }
 
-      setState((prev) => ({
-        ...prev,
-        isSubmitting: false,
-        successMessage: 'Password reset successfully'
-      }))
-
+      setResetStatusMessage(null)
+      setState((prev) => ({ ...prev, isSubmitting: false, successMessage: 'Password reset successfully' }))
       setTimeout(() => navigate('/login'), 2000)
     } catch (err) {
       setState((prev) => ({
@@ -257,6 +231,7 @@ export const ForgotPasswordContainer: FC = () => {
         isSubmitting: false,
         error: err instanceof Error ? err.message : 'Failed to reset password'
       }))
+      setResetStatusMessage(null)
     }
   }
 
@@ -285,20 +260,19 @@ export const ForgotPasswordContainer: FC = () => {
     setState((prev) => ({ ...prev, isSubmitting: true, error: null }))
 
     try {
-      const otp = generateOtp()
-      const codeHash = await hashOtp(otp)
-      const codeExpiry = Date.now() + OTP_EXPIRY_MS
+      const result = await window.api.auth.chakraForgotPassword(state.email.trim().toLowerCase())
 
-      try {
-        await sendOtpEmail(state.email.trim().toLowerCase(), otp)
-      } catch (emailErr) {
-        console.warn('[OTP] Email send failed, logging OTP for testing:', otp)
+      if (!result.success) {
+        setState((prev) => ({
+          ...prev,
+          isSubmitting: false,
+          error: 'Failed to resend code'
+        }))
+        return
       }
 
       setState((prev) => ({
         ...prev,
-        codeHash,
-        codeExpiry,
         isSubmitting: false,
         successMessage: 'Code resent to your email'
       }))
@@ -349,6 +323,7 @@ export const ForgotPasswordContainer: FC = () => {
       emailError={state.emailError}
       verificationCodeError={state.verificationCodeError}
       passwordError={state.passwordError}
+      resetStatusMessage={resetStatusMessage}
       onEmailChange={(email) => setState((prev) => ({ ...prev, email, emailError: null }))}
       onVerificationCodeChange={(code) =>
         setState((prev) => ({ ...prev, verificationCode: code, verificationCodeError: null }))

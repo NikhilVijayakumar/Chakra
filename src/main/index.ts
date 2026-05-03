@@ -16,6 +16,12 @@ import { initTemplateRenderer, renderEmailTemplate } from './services/templateRe
 
 let driveLifecycleHooksRegistered = false
 
+// ── Embedded app WebContentsView state ────────────────────────────────────────
+let activeEmbeddedView: import('electron').WebContentsView | null = null
+let embeddedViewResizeHandler: (() => void) | null = null
+let embeddedViewWindow: import('electron').BrowserWindow | null = null
+const EMBEDDED_TOP_BAR_H = 52
+
 const registerDriveLifecycleHooks = (): void => {
   if (driveLifecycleHooksRegistered) {
     return
@@ -248,6 +254,33 @@ const bootstrapPranaMain = async (): Promise<void> => {
           console.warn('[Chakra] Could not pin SQLite root override:', sqliteErr)
         }
 
+        // Fire startup sync in background — does not block the boot response
+        void (async () => {
+          try {
+            const serviceAccount = await import('./services/googleServiceAccountService')
+            const status = await serviceAccount.getServiceAccountStatus()
+            if (!status.available) return
+
+            const { getStoredSheetId } = await import('./services/employeeStoreService')
+            const spreadsheetId =
+              (await getStoredSheetId()) ??
+              runtimeEnvValue('GOOGLE_EMPLOYEE_SHEET_ID') ??
+              ''
+            if (!spreadsheetId) return
+
+            const { syncHrFromSheets, syncAppsFromSheets } = await import('./services/sheetsSyncService')
+            const [hr, apps] = await Promise.all([
+              syncHrFromSheets(spreadsheetId),
+              syncAppsFromSheets(spreadsheetId)
+            ])
+            console.info(
+              `[Chakra] Startup sync complete — employees: ${hr.employeesLoaded}, apps: ${apps.appsLoaded}`
+            )
+          } catch (err) {
+            console.warn('[Chakra] Startup sync failed (non-fatal):', err)
+          }
+        })()
+
         return { ok: true, driveRoot, createdCount: created.length }
       } catch (err) {
         console.warn('[Chakra] ensureDirectories failed (non-fatal):', err)
@@ -343,7 +376,7 @@ const bootstrapPranaMain = async (): Promise<void> => {
   // Email service for OTP verification
   try {
     const { ipcMain } = await import('electron')
-    const { configureEmailService, sendEmail } = await import('prana/main/services/emailService')
+    const { configureChakraEmailService, sendChakraEmail } = await import('./services/chakraEmailService')
 
     const agentMailApiKey = process.env.CHAKRA_AGENTMAIL_API_KEY ?? process.env.MAIN_VITE_CHAKRA_AGENTMAIL_API_KEY
     const systemInboxId = process.env.CHAKRA_SYSTEM_INBOX_ID ?? process.env.MAIN_VITE_CHAKRA_SYSTEM_INBOX_ID
@@ -360,19 +393,15 @@ const bootstrapPranaMain = async (): Promise<void> => {
         }
       }
 
-      configureEmailService({
-        apiKey: agentMailApiKey,
-        inboxId: systemInboxId,
-        templateRenderer
-      })
-      console.info('[Chakra] Configured email service with AgentMail')
+      configureChakraEmailService(agentMailApiKey, systemInboxId, templateRenderer)
+      console.info('[Chakra] Configured email service with AgentMail (chakraEmailService)')
     } else {
       console.warn('[Chakra] Email service not configured - missing AGENTMAIL_API_KEY or SYSTEM_INBOX_ID')
     }
 
     ipcMain.handle('chakra:send-otp-email', async (_event, payload: { email: string; otp: string }) => {
       try {
-        const result = await sendEmail({
+        const result = await sendChakraEmail({
           to: [payload.email],
           subject: '[Chakra] Password Reset OTP',
           templateName: 'otp-email',
@@ -385,8 +414,291 @@ const bootstrapPranaMain = async (): Promise<void> => {
       }
     })
     console.info('[Chakra] Registered chakra:send-otp-email IPC handler')
+
+    ipcMain.handle('chakra:forgot-password', async (_event, payload: { email: string }) => {
+      try {
+        const email = payload.email.trim().toLowerCase()
+        const employeeStore = await import('./services/employeeStoreService')
+        
+        const isActive = await employeeStore.checkActiveEmployee(email)
+        if (!isActive) {
+          return { success: false, reason: 'email_mismatch' }
+        }
+
+        const otp = Math.floor(100000 + Math.random() * 900000).toString()
+        const bcrypt = (await import('bcryptjs')).default
+        const codeHash = await bcrypt.hash(otp, 10)
+        const codeExpiry = Date.now() + 5 * 60 * 1000 // 5 minutes
+
+        // Use the configured chakraEmailService
+        console.info('[Chakra] forgot-password: sending OTP email to', email)
+        const emailResult = await sendChakraEmail({
+          to: [email],
+          subject: '[Chakra] Password Reset OTP',
+          templateName: 'otp-email',
+          data: { otpCode: otp, expiryMinutes: 5 }
+        })
+        console.info('[Chakra] forgot-password: email result:', JSON.stringify(emailResult))
+
+        if (!emailResult.success) {
+          console.error('[Chakra] forgot-password: email_failed reason:', emailResult.error)
+          return { success: false, reason: 'email_failed' }
+        }
+
+        const saved = await employeeStore.saveEmployeeOtp(email, codeHash, codeExpiry)
+        if (!saved) {
+          return { success: false, reason: 'db_error' }
+        }
+
+        return { success: true }
+      } catch (err) {
+        console.error('[Chakra] forgot-password failed:', err)
+        return { success: false, reason: 'unknown_error' }
+      }
+    })
+    console.info('[Chakra] Registered chakra:forgot-password IPC handler')
+
+    // Bypass: validate email without sending OTP (for development/testing)
+    ipcMain.handle('chakra:validate-employee-email', async (_event, payload: { email: string }) => {
+      try {
+        const email = payload.email.trim().toLowerCase()
+        const employeeStore = await import('./services/employeeStoreService')
+        const isActive = await employeeStore.checkActiveEmployee(email)
+        if (!isActive) {
+          return { success: false, reason: 'email_mismatch' }
+        }
+        return { success: true }
+      } catch (err) {
+        console.error('[Chakra] validate-employee-email failed:', err)
+        return { success: false, reason: 'unknown_error' }
+      }
+    })
+    console.info('[Chakra] Registered chakra:validate-employee-email IPC handler')
+
+    ipcMain.handle('chakra:verify-otp', async (_event, payload: { email: string, otp: string }) => {
+      try {
+        const employeeStore = await import('./services/employeeStoreService')
+        const result = await employeeStore.verifyEmployeeOtp(payload.email, payload.otp)
+        return result
+      } catch (err) {
+        console.error('[Chakra] verify-otp failed:', err)
+        return { success: false, reason: 'unknown_error' }
+      }
+    })
+    console.info('[Chakra] Registered chakra:verify-otp IPC handler')
+
+    ipcMain.handle('chakra:reset-password', async (_event, payload: { email: string, newPassword: string }) => {
+      try {
+        const email = payload.email.trim().toLowerCase()
+        const employeeStore = await import('./services/employeeStoreService')
+        const bcrypt = (await import('bcryptjs')).default
+        const hash = await bcrypt.hash(payload.newPassword, 10)
+
+        // Step 1: SQLite update — marks isDirty=true
+        const saved = await employeeStore.updateEmployeePassword(email, hash)
+        if (!saved) return { success: false, reason: 'db_error' }
+
+        // Step 2: Sheets push with up to 3 retries
+        const MAX_RETRIES = 3
+        let pushed = false
+        let lastErr = ''
+        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+          try {
+            const serviceAccount = await import('./services/googleServiceAccountService')
+            const accessToken = await serviceAccount.getServiceAccountToken()
+            const spreadsheetId =
+              (await employeeStore.getStoredSheetId()) ??
+              process.env.CHAKRA_GOOGLE_EMPLOYEE_SHEET_ID ??
+              process.env.MAIN_VITE_CHAKRA_GOOGLE_EMPLOYEE_SHEET_ID
+            if (!spreadsheetId) { lastErr = 'No spreadsheet ID configured'; break }
+            const sheetsService = await import('./services/googleSheetsService')
+            await sheetsService.updateEmployeePasswordInSheet(spreadsheetId, accessToken, email, hash)
+            pushed = true
+            break
+          } catch (err) {
+            lastErr = (err as Error).message
+            console.warn(`[Chakra] reset-password: Sheets push attempt ${attempt}/${MAX_RETRIES} failed:`, lastErr)
+            if (attempt < MAX_RETRIES) await new Promise(r => setTimeout(r, 1000))
+          }
+        }
+
+        if (!pushed) {
+          // isDirty=true remains — next startup sync will push it
+          console.warn('[Chakra] reset-password: Sheets push failed after all retries, leaving isDirty=true')
+          return { success: false, reason: 'sheets_push_failed', detail: lastErr }
+        }
+
+        // Step 3: Clear dirty flag after confirmed push
+        const { getDb } = await import('./db/init')
+        const { employees } = await import('./db/schema')
+        const { eq } = await import('drizzle-orm')
+        getDb().update(employees).set({ isDirty: false }).where(eq(employees.email, email)).run()
+        console.info('[Chakra] reset-password: complete for', email)
+
+        return { success: true }
+      } catch (err) {
+        console.error('[Chakra] reset-password failed:', err)
+        return { success: false, reason: 'unknown_error' }
+      }
+    })
+    console.info('[Chakra] Registered chakra:reset-password IPC handler')
   } catch (error) {
     console.warn('[Chakra] Could not register email service IPC handlers:', error)
+  }
+
+  // App install / access IPC handlers
+  try {
+    const { ipcMain } = await import('electron')
+    const appSvc = await import('./services/appInstallService')
+    const { syncAppsFromSheets } = await import('./services/sheetsSyncService')
+    const employeeStore = await import('./services/employeeStoreService')
+
+    ipcMain.handle('chakra:sync-app-sheets', async () => {
+      const zeros = { appsLoaded: 0, appUsersLoaded: 0, appTeamsLoaded: 0, teamsLoaded: 0, employeeTeamsLoaded: 0 }
+      try {
+        const serviceAccount = await import('./services/googleServiceAccountService')
+        const status = await serviceAccount.getServiceAccountStatus()
+        if (!status.available) {
+          return { success: false, errors: [status.error ?? 'Service account not available'], ...zeros }
+        }
+        const spreadsheetId = (await employeeStore.getStoredSheetId()) ?? runtimeEnvValue('GOOGLE_EMPLOYEE_SHEET_ID') ?? ''
+        if (!spreadsheetId) {
+          return { success: false, errors: ['Spreadsheet ID not configured'], ...zeros }
+        }
+        return syncAppsFromSheets(spreadsheetId)
+      } catch (err) {
+        return { success: false, errors: [(err as Error).message ?? 'Sync failed'], ...zeros }
+      }
+    })
+
+    ipcMain.handle('chakra:get-user-apps', async (_event, payload: { email: string }) => {
+      try {
+        const employeeId = appSvc.getEmployeeIdByEmail(payload.email)
+        if (!employeeId) {
+          return { success: false, error: 'Employee not found', apps: [] }
+        }
+        const userApps = appSvc.getUserAccessibleApps(employeeId)
+        return { success: true, apps: userApps }
+      } catch (err) {
+        return { success: false, error: (err as Error).message, apps: [] }
+      }
+    })
+
+    ipcMain.handle('chakra:install-app', async (event, payload: { appId: string; appName: string; cloneUrl: string }) => {
+      try {
+        // Resolve commit hash from DB (Apps table) so renderer doesn't need to pass it
+        const { getDb } = await import('./db/init')
+        const { apps: appsTable } = await import('./db/schema')
+        const { eq } = await import('drizzle-orm')
+        const db = getDb()
+        const appRow = db.select().from(appsTable).where(eq(appsTable.id, payload.appId)).get()
+        const commitHash = appRow?.commitHash?.trim() || null
+
+        const result = await appSvc.installApp(
+          payload.appId,
+          payload.appName,
+          payload.cloneUrl,
+          commitHash,
+          (step, percent, log) => {
+            try { event.sender.send('chakra:install-progress', { step, percent, log }) } catch { /* renderer navigated away */ }
+          }
+        )
+        return { success: true, installPath: result.installPath }
+      } catch (err) {
+        return { success: false, error: (err as Error).message }
+      }
+    })
+
+    ipcMain.handle('chakra:uninstall-app', async (_event, payload: { appId: string }) => {
+      try {
+        await appSvc.uninstallApp(payload.appId)
+        return { success: true }
+      } catch (err) {
+        return { success: false, error: (err as Error).message }
+      }
+    })
+
+    // ── Embedded launch via WebContentsView ─────────────────────────────────
+    ipcMain.handle('chakra:launch-webview', async (event, payload: { appId: string }) => {
+      try {
+        const { WebContentsView, BrowserWindow } = await import('electron')
+        const win = BrowserWindow.fromWebContents(event.sender)
+        if (!win) return { success: false, error: 'No window found' }
+
+        const { installPath } = appSvc.getInstallRecord(payload.appId)
+        if (!installPath || !existsSync(installPath)) {
+          return { success: false, error: 'App is not installed' }
+        }
+
+        const entryPoint = appSvc.findAppEntryPoint(installPath)
+        if (!entryPoint) {
+          return { success: false, error: 'No built output found. Reinstall the app to build it.' }
+        }
+
+        // Clean up any existing embedded view
+        if (activeEmbeddedView && embeddedViewWindow) {
+          try { embeddedViewWindow.contentView.removeChildView(activeEmbeddedView) } catch { /* ignore */ }
+          if (embeddedViewResizeHandler) embeddedViewWindow.off('resize', embeddedViewResizeHandler)
+          try { activeEmbeddedView.webContents.close() } catch { /* ignore */ }
+          activeEmbeddedView = null
+          embeddedViewResizeHandler = null
+          embeddedViewWindow = null
+        }
+
+        const view = new WebContentsView({
+          webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true,
+            sandbox: false
+          }
+        })
+
+        const [w, h] = win.getContentSize()
+        view.setBounds({ x: 0, y: EMBEDDED_TOP_BAR_H, width: w, height: h - EMBEDDED_TOP_BAR_H })
+        win.contentView.addChildView(view)
+        await view.webContents.loadFile(entryPoint)
+
+        activeEmbeddedView = view
+        embeddedViewWindow = win
+
+        embeddedViewResizeHandler = () => {
+          if (!activeEmbeddedView) return
+          const [nw, nh] = win.getContentSize()
+          activeEmbeddedView.setBounds({ x: 0, y: EMBEDDED_TOP_BAR_H, width: nw, height: nh - EMBEDDED_TOP_BAR_H })
+        }
+        win.on('resize', embeddedViewResizeHandler)
+
+        console.info(`[Chakra] Embedded app launched: ${payload.appId} → ${entryPoint}`)
+        return { success: true }
+      } catch (err) {
+        return { success: false, error: (err as Error).message }
+      }
+    })
+
+    ipcMain.handle('chakra:exit-webview', async (event) => {
+      try {
+        const { BrowserWindow } = await import('electron')
+        const win = BrowserWindow.fromWebContents(event.sender)
+        if (activeEmbeddedView) {
+          const targetWin = embeddedViewWindow ?? win
+          if (targetWin) {
+            try { targetWin.contentView.removeChildView(activeEmbeddedView) } catch { /* ignore */ }
+            if (embeddedViewResizeHandler) targetWin.off('resize', embeddedViewResizeHandler)
+          }
+          try { activeEmbeddedView.webContents.close() } catch { /* ignore */ }
+          activeEmbeddedView = null
+          embeddedViewResizeHandler = null
+          embeddedViewWindow = null
+        }
+        return { success: true }
+      } catch (err) {
+        return { success: false, error: (err as Error).message }
+      }
+    })
+
+    console.info('[Chakra] Registered app install IPC handlers')
+  } catch (error) {
+    console.warn('[Chakra] Could not register app install IPC handlers:', error)
   }
 
   // Ensure SQLite runtime config snapshot exists.

@@ -19,6 +19,7 @@ import { EnhancedLoginContainer } from './features/authentication/view/EnhancedL
 import { ForgotPasswordContainer } from './features/authentication/view/ForgotPasswordContainer'
 import { HomeContainer } from './features/dashboard/view/HomeContainer'
 import { AppInstallContainer } from './features/app-install/view/AppInstallContainer'
+import { AppRunnerContainer } from './features/app-runner/view/AppRunnerContainer'
 import { VirtualDriveContainer } from './features/virtual-drive/view/VirtualDriveContainer'
 import { SplashContainerOverride } from './features/splash-override/view/SplashContainerOverride'
 import { volatileSessionStore } from 'prana/ui/state/volatileSessionStore'
@@ -318,8 +319,16 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
                 {/* Authenticated routes — guarded and require Lifecycle */}
                 <Route element={<LifecycleWrapper />}>
                   {/* New UI Screens */}
-                  <Route path="/home" element={<HomeContainer />} />
+                  <Route
+                    path="/home"
+                    element={
+                      <MainAppGuard>
+                        <HomeContainer />
+                      </MainAppGuard>
+                    }
+                  />
                   <Route path="/app-install" element={<AppInstallContainer />} />
+                  <Route path="/app-runner/:appId" element={<AppRunnerContainer />} />
                   <Route path="/virtual-drive" element={<VirtualDriveContainer />} />
                   
                   <Route
