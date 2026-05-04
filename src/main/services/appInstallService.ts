@@ -33,6 +33,12 @@ const getAppsBaseDir = async (): Promise<string> => {
 
 // ── DB helpers ────────────────────────────────────────────────────────────────
 
+const dedup = <T>(rows: T[], key: (r: T) => string): T[] => {
+  const seen = new Map<string, T>()
+  for (const r of rows) seen.set(key(r), r)
+  return [...seen.values()]
+}
+
 export const saveApps = async (rows: AppRow[]): Promise<void> => {
   const db = getDb()
   const now = Math.floor(Date.now() / 1000)
@@ -58,11 +64,12 @@ export const saveApps = async (rows: AppRow[]): Promise<void> => {
 export const saveAppUsers = async (rows: AppUserRow[]): Promise<void> => {
   const db = getDb()
   const now = Math.floor(Date.now() / 1000)
+  const unique = dedup(rows, r => `${r.employee_id}|${r.app_id}`)
   db.delete(appUsers).run()
-  if (rows.length === 0) return
+  if (unique.length === 0) return
   db.insert(appUsers)
     .values(
-      rows.map(r => ({
+      unique.map(r => ({
         employeeId: r.employee_id,
         appId: r.app_id,
         status: r.status,
@@ -72,17 +79,18 @@ export const saveAppUsers = async (rows: AppUserRow[]): Promise<void> => {
       }))
     )
     .run()
-  console.info(`[Chakra] App store: ${rows.length} app-user records saved`)
+  console.info(`[Chakra] App store: ${unique.length} app-user records saved (${rows.length} sheet rows)`)
 }
 
 export const saveAppTeams = async (rows: AppTeamRow[]): Promise<void> => {
   const db = getDb()
   const now = Math.floor(Date.now() / 1000)
+  const unique = dedup(rows, r => `${r.app_id}|${r.team_id}`)
   db.delete(appTeams).run()
-  if (rows.length === 0) return
+  if (unique.length === 0) return
   db.insert(appTeams)
     .values(
-      rows.map(r => ({
+      unique.map(r => ({
         appId: r.app_id,
         teamId: r.team_id,
         status: r.status,
@@ -92,7 +100,7 @@ export const saveAppTeams = async (rows: AppTeamRow[]): Promise<void> => {
       }))
     )
     .run()
-  console.info(`[Chakra] App store: ${rows.length} app-team records saved`)
+  console.info(`[Chakra] App store: ${unique.length} app-team records saved (${rows.length} sheet rows)`)
 }
 
 export const saveTeams = async (rows: TeamRow[]): Promise<void> => {
@@ -118,11 +126,12 @@ export const saveTeams = async (rows: TeamRow[]): Promise<void> => {
 export const saveEmployeeTeams = async (rows: EmployeeTeamRow[]): Promise<void> => {
   const db = getDb()
   const now = Math.floor(Date.now() / 1000)
+  const unique = dedup(rows, r => `${r.employee_id}|${r.team_id}`)
   db.delete(employeeTeams).run()
-  if (rows.length === 0) return
+  if (unique.length === 0) return
   db.insert(employeeTeams)
     .values(
-      rows.map(r => ({
+      unique.map(r => ({
         employeeId: r.employee_id,
         teamId: r.team_id,
         status: r.status,
@@ -132,7 +141,7 @@ export const saveEmployeeTeams = async (rows: EmployeeTeamRow[]): Promise<void> 
       }))
     )
     .run()
-  console.info(`[Chakra] App store: ${rows.length} employee-team records saved`)
+  console.info(`[Chakra] App store: ${unique.length} employee-team records saved (${rows.length} sheet rows)`)
 }
 
 // ── Access logic ──────────────────────────────────────────────────────────────

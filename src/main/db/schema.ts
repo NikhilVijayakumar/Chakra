@@ -39,7 +39,8 @@ export const appTeams = sqliteTable('app_teams', {
 })
 
 export const attendanceKeys = sqliteTable('attendance_keys', {
-  shortKey: text('short_key').primaryKey(),
+  id: text('id').primaryKey(),
+  shortKey: text('short_key'),
   fullDescription: text('full_description'),
   ...syncFields
 })
@@ -93,13 +94,15 @@ export const employees = sqliteTable('employees', {
 })
 
 export const holidays = sqliteTable('holidays', {
-  date: text('date').primaryKey(),
+  id: text('id').primaryKey(),
+  date: text('date'),
   holidayName: text('holiday_name'),
   ...syncFields
 })
 
 export const leaves = sqliteTable('leaves', {
-  leaveType: text('leave_type').primaryKey(),
+  id: text('id').primaryKey(),
+  leaveType: text('leave_type'),
   count: integer('count'),
   carryForward: integer('carry_forward'),
   maxForward: integer('max_forward'),

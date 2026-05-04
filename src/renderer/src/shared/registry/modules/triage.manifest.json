@@ -2,6 +2,6 @@
   "id": "triage",
   "title": "Triage",
   "route": "/triage",
-  "enabled": true,
+  "enabled": false,
   "ownership": "renderer-module"
 }

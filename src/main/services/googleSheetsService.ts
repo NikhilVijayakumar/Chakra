@@ -174,7 +174,7 @@ const colAny = (header: string[], ...candidates: string[]): number => {
 export const readAppsSheet = async (
   spreadsheetId: string,
   accessToken: string,
-  sheetName = 'Apps'
+  sheetName = 'App'
 ): Promise<AppRow[]> => {
   const range = encodeURIComponent(`${sheetName}!A:G`)
   const rows = parseValues(await sheetsGet(`${SHEETS_BASE}/${spreadsheetId}/values/${range}`, accessToken))
@@ -204,7 +204,7 @@ export const readAppsSheet = async (
 export const readAppUsersSheet = async (
   spreadsheetId: string,
   accessToken: string,
-  sheetName = 'AppUsers'
+  sheetName = 'AppUser'
 ): Promise<AppUserRow[]> => {
   const range = encodeURIComponent(`${sheetName}!A:D`)
   const rows = parseValues(await sheetsGet(`${SHEETS_BASE}/${spreadsheetId}/values/${range}`, accessToken))
@@ -228,7 +228,7 @@ export const readAppUsersSheet = async (
 export const readAppTeamsSheet = async (
   spreadsheetId: string,
   accessToken: string,
-  sheetName = 'AppTeams'
+  sheetName = 'AppTeam'
 ): Promise<AppTeamRow[]> => {
   const range = encodeURIComponent(`${sheetName}!A:D`)
   const rows = parseValues(await sheetsGet(`${SHEETS_BASE}/${spreadsheetId}/values/${range}`, accessToken))
@@ -252,7 +252,7 @@ export const readAppTeamsSheet = async (
 export const readTeamsSheet = async (
   spreadsheetId: string,
   accessToken: string,
-  sheetName = 'Teams'
+  sheetName = 'Team'
 ): Promise<TeamRow[]> => {
   const range = encodeURIComponent(`${sheetName}!A:C`)
   const rows = parseValues(await sheetsGet(`${SHEETS_BASE}/${spreadsheetId}/values/${range}`, accessToken))
@@ -276,7 +276,7 @@ export const readTeamsSheet = async (
 export const readEmployeeTeamsSheet = async (
   spreadsheetId: string,
   accessToken: string,
-  sheetName = 'EmployeeTeams'
+  sheetName = 'EmployeeTeam'
 ): Promise<EmployeeTeamRow[]> => {
   const range = encodeURIComponent(`${sheetName}!A:D`)
   const rows = parseValues(await sheetsGet(`${SHEETS_BASE}/${spreadsheetId}/values/${range}`, accessToken))
@@ -294,6 +294,113 @@ export const readEmployeeTeamsSheet = async (
       employee_id: row[empCol].trim(),
       team_id:     row[teamCol].trim(),
       status:      row[stCol]?.trim().toLowerCase() ?? 'active'
+    }))
+}
+
+// ── AttendanceKey (tab: "AttendanceKey", columns: ID | ShortKey | FullDescription) ──
+
+export interface AttendanceKeyRow {
+  id: string
+  short_key: string
+  full_description: string
+}
+
+export const readAttendanceKeySheet = async (
+  spreadsheetId: string,
+  accessToken: string,
+  sheetName = 'AttendanceKey'
+): Promise<AttendanceKeyRow[]> => {
+  const range = encodeURIComponent(`${sheetName}!A:D`)
+  const rows = parseValues(await sheetsGet(`${SHEETS_BASE}/${spreadsheetId}/values/${range}`, accessToken))
+  if (rows.length < 2) return []
+
+  const header = rows[0].map(h => h.trim().toLowerCase())
+  const idCol  = colAny(header, 'id')
+  const skCol  = colAny(header, 'short_key', 'shortkey', 'short key', 'key')
+  const fdCol  = colAny(header, 'full_description', 'fulldescription', 'full description', 'description')
+
+  return rows
+    .slice(1)
+    .filter(row => row[idCol]?.trim())
+    .map(row => ({
+      id:               row[idCol].trim(),
+      short_key:        skCol >= 0 ? (row[skCol]?.trim() ?? '') : '',
+      full_description: fdCol >= 0 ? (row[fdCol]?.trim() ?? '') : ''
+    }))
+}
+
+// ── Holiday (tab: "Holiday", columns: ID | Date | HolidayName) ─────────────
+
+export interface HolidayRow {
+  id: string
+  date: string
+  holiday_name: string
+}
+
+export const readHolidaySheet = async (
+  spreadsheetId: string,
+  accessToken: string,
+  sheetName = 'Holiday'
+): Promise<HolidayRow[]> => {
+  const range = encodeURIComponent(`${sheetName}!A:D`)
+  const rows = parseValues(await sheetsGet(`${SHEETS_BASE}/${spreadsheetId}/values/${range}`, accessToken))
+  if (rows.length < 2) return []
+
+  const header    = rows[0].map(h => h.trim().toLowerCase())
+  const idCol     = colAny(header, 'id')
+  const dateCol   = colAny(header, 'date')
+  const nameCol   = colAny(header, 'holiday_name', 'holidayname', 'holiday name', 'name')
+
+  return rows
+    .slice(1)
+    .filter(row => row[idCol]?.trim())
+    .map(row => ({
+      id:           row[idCol].trim(),
+      date:         dateCol >= 0 ? (row[dateCol]?.trim() ?? '') : '',
+      holiday_name: nameCol >= 0 ? (row[nameCol]?.trim() ?? '') : ''
+    }))
+}
+
+// ── Leave (tab: "Leave", columns: ID | LeaveType | Count | CarryForward | MaxForward) ──
+
+export interface LeaveRow {
+  id: string
+  leave_type: string
+  count: number
+  carry_forward: number
+  max_forward: number
+}
+
+const safeInt = (val: string | undefined): number => {
+  const n = parseInt(val ?? '', 10)
+  return isNaN(n) ? 0 : n
+}
+
+export const readLeaveSheet = async (
+  spreadsheetId: string,
+  accessToken: string,
+  sheetName = 'Leave'
+): Promise<LeaveRow[]> => {
+  const range = encodeURIComponent(`${sheetName}!A:F`)
+  const rows = parseValues(await sheetsGet(`${SHEETS_BASE}/${spreadsheetId}/values/${range}`, accessToken))
+  if (rows.length < 2) return []
+
+  const header  = rows[0].map(h => h.trim().toLowerCase())
+  const idCol   = colAny(header, 'id')
+  const ltCol   = colAny(header, 'leave_type', 'leavetype', 'leave type', 'type')
+  const cntCol  = colAny(header, 'count', 'days', 'total')
+  const cfCol   = colAny(header, 'carry_forward', 'carryforward', 'carry forward')
+  const mfCol   = colAny(header, 'max_forward', 'maxforward', 'max forward', 'max')
+
+  return rows
+    .slice(1)
+    .filter(row => row[idCol]?.trim())
+    .map(row => ({
+      id:            row[idCol].trim(),
+      leave_type:    ltCol >= 0 ? (row[ltCol]?.trim() ?? '') : '',
+      count:         safeInt(cntCol >= 0 ? row[cntCol] : undefined),
+      carry_forward: safeInt(cfCol >= 0 ? row[cfCol] : undefined),
+      max_forward:   safeInt(mfCol >= 0 ? row[mfCol] : undefined)
     }))
 }
 

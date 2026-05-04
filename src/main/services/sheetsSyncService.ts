@@ -7,9 +7,19 @@ import {
   readAppUsersSheet,
   readAppTeamsSheet,
   readTeamsSheet,
-  readEmployeeTeamsSheet
+  readEmployeeTeamsSheet,
+  readAttendanceKeySheet,
+  readHolidaySheet,
+  readLeaveSheet
 } from './googleSheetsService'
-import { saveDepartments, saveDesignations, saveEmployees } from './employeeStoreService'
+import {
+  saveDepartments,
+  saveDesignations,
+  saveEmployees,
+  saveAttendanceKeys,
+  saveHolidays,
+  saveLeaves
+} from './employeeStoreService'
 import { saveApps, saveAppUsers, saveAppTeams, saveTeams, saveEmployeeTeams } from './appInstallService'
 import { getServiceAccountToken } from './googleServiceAccountService'
 import { getDb } from '../db/init'
@@ -21,6 +31,9 @@ export interface HrSyncResult {
   departmentsLoaded: number
   designationsLoaded: number
   employeesLoaded: number
+  attendanceKeysLoaded: number
+  holidaysLoaded: number
+  leavesLoaded: number
   errors: string[]
 }
 
@@ -30,6 +43,9 @@ export const syncHrFromSheets = async (spreadsheetId: string): Promise<HrSyncRes
   let departmentsLoaded = 0
   let designationsLoaded = 0
   let employeesLoaded = 0
+  let attendanceKeysLoaded = 0
+  let holidaysLoaded = 0
+  let leavesLoaded = 0
 
   // First, push local dirty passwords back to the sheet
   try {
@@ -85,6 +101,36 @@ export const syncHrFromSheets = async (spreadsheetId: string): Promise<HrSyncRes
     console.warn('[Chakra] Sheets sync: employees error:', err)
   }
 
+  try {
+    const rows = await readAttendanceKeySheet(spreadsheetId, accessToken)
+    attendanceKeysLoaded = rows.length
+    await saveAttendanceKeys(rows)
+    console.info(`[Chakra] Sheets sync: saved ${attendanceKeysLoaded} attendance keys`)
+  } catch (err) {
+    errors.push(`AttendanceKey sheet: ${err instanceof Error ? err.message : String(err)}`)
+    console.warn('[Chakra] Sheets sync: attendance-keys error:', err)
+  }
+
+  try {
+    const rows = await readHolidaySheet(spreadsheetId, accessToken)
+    holidaysLoaded = rows.length
+    await saveHolidays(rows)
+    console.info(`[Chakra] Sheets sync: saved ${holidaysLoaded} holidays`)
+  } catch (err) {
+    errors.push(`Holiday sheet: ${err instanceof Error ? err.message : String(err)}`)
+    console.warn('[Chakra] Sheets sync: holidays error:', err)
+  }
+
+  try {
+    const rows = await readLeaveSheet(spreadsheetId, accessToken)
+    leavesLoaded = rows.length
+    await saveLeaves(rows)
+    console.info(`[Chakra] Sheets sync: saved ${leavesLoaded} leave types`)
+  } catch (err) {
+    errors.push(`Leave sheet: ${err instanceof Error ? err.message : String(err)}`)
+    console.warn('[Chakra] Sheets sync: leaves error:', err)
+  }
+
   // Post-sync cleanup: remove any local rows marked as isDeleted=1 (if any were created)
   try {
     const db = getDb()
@@ -99,6 +145,9 @@ export const syncHrFromSheets = async (spreadsheetId: string): Promise<HrSyncRes
     departmentsLoaded,
     designationsLoaded,
     employeesLoaded,
+    attendanceKeysLoaded,
+    holidaysLoaded,
+    leavesLoaded,
     errors
   }
 }

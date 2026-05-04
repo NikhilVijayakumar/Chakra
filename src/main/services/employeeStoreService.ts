@@ -1,8 +1,15 @@
 import bcrypt from 'bcryptjs'
 import { eq, sql } from 'drizzle-orm'
 import { getDb, resetDbInitialization } from '../db/init'
-import { departments, designations, employees, googleAuth } from '../db/schema'
-import type { DepartmentRow, DesignationRow, EmployeeRow } from './googleSheetsService'
+import { attendanceKeys, departments, designations, employees, googleAuth, holidays, leaves } from '../db/schema'
+import type {
+  AttendanceKeyRow,
+  DepartmentRow,
+  DesignationRow,
+  EmployeeRow,
+  HolidayRow,
+  LeaveRow
+} from './googleSheetsService'
 
 export const setSqliteRoot = (root: string): void => {
   resetDbInitialization()
@@ -111,6 +118,71 @@ export const saveEmployees = async (empRows: EmployeeRow[]): Promise<void> => {
   }
 
   console.info(`[Chakra] Employee store: ${empRows.length} employees upserted to SQLite`)
+}
+
+export const saveAttendanceKeys = async (rows: AttendanceKeyRow[]): Promise<void> => {
+  const db = getDb()
+  const now = Math.floor(Date.now() / 1000)
+  const seen = new Map<string, AttendanceKeyRow>()
+  for (const r of rows) seen.set(r.id, r)
+  const unique = [...seen.values()]
+  db.delete(attendanceKeys).run()
+  if (unique.length === 0) return
+  db.insert(attendanceKeys)
+    .values(unique.map(r => ({
+      id:              r.id,
+      shortKey:        r.short_key,
+      fullDescription: r.full_description,
+      sync:            now,
+      isDirty:         false,
+      isDeleted:       false
+    })))
+    .run()
+  console.info(`[Chakra] Employee store: ${unique.length} attendance keys saved (${rows.length} sheet rows)`)
+}
+
+export const saveHolidays = async (rows: HolidayRow[]): Promise<void> => {
+  const db = getDb()
+  const now = Math.floor(Date.now() / 1000)
+  const seen = new Map<string, HolidayRow>()
+  for (const r of rows) seen.set(r.id, r)
+  const unique = [...seen.values()]
+  db.delete(holidays).run()
+  if (unique.length === 0) return
+  db.insert(holidays)
+    .values(unique.map(r => ({
+      id:          r.id,
+      date:        r.date,
+      holidayName: r.holiday_name,
+      sync:        now,
+      isDirty:     false,
+      isDeleted:   false
+    })))
+    .run()
+  console.info(`[Chakra] Employee store: ${unique.length} holidays saved (${rows.length} sheet rows)`)
+}
+
+export const saveLeaves = async (rows: LeaveRow[]): Promise<void> => {
+  const db = getDb()
+  const now = Math.floor(Date.now() / 1000)
+  const seen = new Map<string, LeaveRow>()
+  for (const r of rows) seen.set(r.id, r)
+  const unique = [...seen.values()]
+  db.delete(leaves).run()
+  if (unique.length === 0) return
+  db.insert(leaves)
+    .values(unique.map(r => ({
+      id:           r.id,
+      leaveType:    r.leave_type,
+      count:        r.count,
+      carryForward: r.carry_forward,
+      maxForward:   r.max_forward,
+      sync:         now,
+      isDirty:      false,
+      isDeleted:    false
+    })))
+    .run()
+  console.info(`[Chakra] Employee store: ${unique.length} leave types saved (${rows.length} sheet rows)`)
 }
 
 export const checkActiveEmployee = async (email: string): Promise<boolean> => {
@@ -238,6 +310,9 @@ export const employeeStoreService = {
   saveDepartments,
   saveDesignations,
   saveEmployees,
+  saveAttendanceKeys,
+  saveHolidays,
+  saveLeaves,
   hasEmployees,
   loginEmployee,
   checkActiveEmployee,

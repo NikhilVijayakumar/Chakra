@@ -11,6 +11,7 @@ import {
 import { verifyStartupSafety, warnWeakVaultConfig } from './services/startupSecurity'
 import { setPranaPlatformRuntime } from 'prana/main/services/pranaPlatformRuntime'
 import { setPranaRuntimeConfig } from 'prana/main/services/pranaRuntimeConfig'
+import { pickFreeDriveLetters } from './services/driveLetterService'
 
 import { initTemplateRenderer, renderEmailTemplate } from './services/templateRenderer'
 
@@ -140,20 +141,23 @@ const bootstrapPranaMain = async (): Promise<void> => {
         slackChannelId: runtimeEnvValue('SLACK_CHANNEL_ID'),
         teamsChannelId: runtimeEnvValue('TEAMS_CHANNEL_ID')
       },
-      virtualDrives: {
-        // In development on Windows, mounting to drive letters like "S:" can fail
-        // even when rclone exists (for example when WinFsp is unavailable), which
-        // then breaks auth/status storage by pointing app data to an invalid root.
-        // Keep production behavior fail-closed, but default dev to fallback storage
-        // unless explicitly overridden via CHAKRA_VIRTUAL_DRIVE_ENABLED/DHI_...
-        enabled: runtimeBooleanValue('VIRTUAL_DRIVE_ENABLED') ?? !isDevelopment,
-        // Forward the generated drive key directly to the crypt remote so Prana
-        // does not need to fall back through the vault → archivePassword chain.
-        systemCryptPassword: runtimeEnvValue('VAULT_ARCHIVE_PASSWORD'),
-        // Fail-closed in production: mount failure blocks startup rather than
-        // silently falling back to unencrypted local storage.
-        failClosed: runtimeBooleanValue('VIRTUAL_DRIVE_FAIL_CLOSED') ?? !isDevelopment
-      }
+      virtualDrives: (() => {
+        const driveLetters = pickFreeDriveLetters()
+        const explicitSystem = runtimeEnvValue('VIRTUAL_DRIVE_SYSTEM_LETTER')
+        const explicitVault = runtimeEnvValue('VIRTUAL_DRIVE_VAULT_LETTER')
+        const systemMount = explicitSystem ?? driveLetters?.system
+        const vaultMount = explicitVault ?? driveLetters?.vault
+        if (systemMount && vaultMount) {
+          console.info(`[Chakra] Virtual drives: system=${systemMount} vault=${vaultMount}`)
+        }
+        return {
+          enabled: runtimeBooleanValue('VIRTUAL_DRIVE_ENABLED') ?? !isDevelopment,
+          systemCryptPassword: runtimeEnvValue('VAULT_ARCHIVE_PASSWORD'),
+          failClosed: runtimeBooleanValue('VIRTUAL_DRIVE_FAIL_CLOSED') ?? !isDevelopment,
+          ...(systemMount ? { system: { mountPoint: systemMount } } : {}),
+          ...(vaultMount ? { vault: { mountPoint: vaultMount } } : {})
+        }
+      })()
     }
 
     setPranaRuntimeConfig(config)
@@ -213,6 +217,30 @@ const bootstrapPranaMain = async (): Promise<void> => {
   }
 
   await import('prana/main/index')
+
+  // Seed the SQLite bootstrap config immediately after Prana registers its
+  // window-all-closed / before-quit handlers (which call cleanupTemporaryWorkspace).
+  // Without this, closing the window before the late seeding block at the bottom
+  // of this function causes an unhandled [PRANA_CONFIG_ERROR] rejection.
+  try {
+    const { sqliteConfigStoreService } =
+      await import('prana/main/services/sqliteConfigStoreService')
+    const { getPranaRuntimeConfig } = await import('prana/main/services/pranaRuntimeConfig')
+    const currentConfig = getPranaRuntimeConfig()
+    if (currentConfig) {
+      if (isDevelopment) {
+        await sqliteConfigStoreService.overwriteFromRuntimeProps(currentConfig)
+        console.info('[Chakra] Early-seeded SQLite config snapshot from runtime config (development)')
+      } else {
+        await sqliteConfigStoreService.seedFromRuntimePropsIfEmpty(currentConfig)
+        console.info('[Chakra] Early-seeded SQLite config store with current runtime config if empty')
+      }
+    } else {
+      console.warn('[Chakra] Early seed skipped: runtime config not available yet')
+    }
+  } catch (error) {
+    console.warn('[Chakra] Early SQLite config seed failed:', error)
+  }
 
   try {
     await import('prana/main/services/driveControllerService')
