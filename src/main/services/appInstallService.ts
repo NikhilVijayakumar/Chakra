@@ -264,6 +264,30 @@ export const getUserAccessibleApps = (employeeId: string): AppWithAccess[] => {
 
 export type InstallProgressCallback = (step: string, percent: number, log: string) => void
 
+// npm/npx on Windows are .cmd batch scripts that require cmd.exe (shell: true).
+// git is a real binary that must use shell: false so URLs/paths with spaces
+// are never word-split by the shell.
+const needsShell = (cmd: string): boolean =>
+  process.platform === 'win32' && (cmd === 'npm' || cmd === 'npx')
+
+// Normalise a git remote URL from what might be stored in the sheet:
+// - Strip leading/trailing whitespace and any accidental "git clone " prefix
+// - Accept bare GitHub slugs like "user/repo" → "https://github.com/user/repo.git"
+const normaliseCloneUrl = (raw: string): string => {
+  let url = raw.trim()
+  // Strip accidental "git clone " prefix
+  if (url.toLowerCase().startsWith('git clone ')) {
+    url = url.slice('git clone '.length).trim()
+    // Take only the first token (URL) — ignore any extra args someone pasted in
+    url = url.split(/\s+/)[0]
+  }
+  // Bare "user/repo" slug → full GitHub HTTPS URL
+  if (/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(url)) {
+    url = `https://github.com/${url}.git`
+  }
+  return url
+}
+
 const runCommand = (
   cmd: string,
   args: string[],
@@ -271,7 +295,7 @@ const runCommand = (
   onLog?: (line: string) => void
 ): Promise<void> => {
   return new Promise((resolve, reject) => {
-    const proc = spawn(cmd, args, { cwd, shell: true, stdio: 'pipe' })
+    const proc = spawn(cmd, args, { cwd, shell: needsShell(cmd), stdio: 'pipe' })
     proc.stdout?.on('data', (d) => {
       const line = d.toString().trim()
       if (line) {
@@ -324,11 +348,22 @@ export const installApp = async (
   const safeName = appName.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase()
   const installPath = join(baseDir, safeName)
   const hash = commitHash?.trim() || null
+  const repoUrl = normaliseCloneUrl(cloneUrl)
+
+  console.info(`[Chakra] Installing "${appName}" from ${repoUrl} → ${installPath}`)
 
   // Step 1: Clone / fetch
-  if (!existsSync(installPath)) {
+  const isValidRepo = existsSync(installPath) && existsSync(join(installPath, '.git'))
+
+  if (existsSync(installPath) && !isValidRepo) {
+    // Partial/failed previous install — remove the broken directory and re-clone fresh
+    onProgress?.('clone', 2, '> Removing incomplete previous install...')
+    rmSync(installPath, { recursive: true, force: true })
+  }
+
+  if (!isValidRepo) {
     onProgress?.('clone', 5, '> Cloning repository...')
-    await runCommand('git', ['clone', cloneUrl, installPath], undefined,
+    await runCommand('git', ['clone', repoUrl, installPath], undefined,
       (line) => onProgress?.('clone', 15, `> ${line.slice(0, 80)}`)
     )
     if (hash) {
