@@ -10,7 +10,8 @@ import {
   readEmployeeTeamsSheet,
   readAttendanceKeySheet,
   readHolidaySheet,
-  readLeaveSheet
+  readLeaveSheet,
+  readConfigSheet
 } from './googleSheetsService'
 import {
   saveDepartments,
@@ -21,7 +22,9 @@ import {
   saveLeaves
 } from './employeeStoreService'
 import { saveApps, saveAppUsers, saveAppTeams, saveTeams, saveEmployeeTeams } from './appInstallService'
+import { saveConfigs } from './configStoreService'
 import { getServiceAccountToken } from './googleServiceAccountService'
+import { getTabNames } from './bootstrapConfigService'
 import { getDb } from '../db/init'
 import { employees } from '../db/schema'
 import { eq } from 'drizzle-orm'
@@ -39,6 +42,7 @@ export interface HrSyncResult {
 
 export const syncHrFromSheets = async (spreadsheetId: string): Promise<HrSyncResult> => {
   const accessToken = await getServiceAccountToken()
+  const tabs = getTabNames()
   const errors: string[] = []
   let departmentsLoaded = 0
   let designationsLoaded = 0
@@ -54,11 +58,10 @@ export const syncHrFromSheets = async (spreadsheetId: string): Promise<HrSyncRes
       .from(employees)
       .where(eq(employees.isDirty, true))
       .all()
-      
+
     for (const emp of dirtyEmployees) {
       if (emp.email && emp.passwordHash) {
-        await updateEmployeePasswordInSheet(spreadsheetId, accessToken, emp.email, emp.passwordHash)
-        // Mark as clean after pushing
+        await updateEmployeePasswordInSheet(spreadsheetId, accessToken, emp.email, emp.passwordHash, tabs.employee)
         db.update(employees)
           .set({ isDirty: false })
           .where(eq(employees.email, emp.email))
@@ -72,7 +75,7 @@ export const syncHrFromSheets = async (spreadsheetId: string): Promise<HrSyncRes
   }
 
   try {
-    const departments = await readDepartmentSheet(spreadsheetId, accessToken)
+    const departments = await readDepartmentSheet(spreadsheetId, accessToken, tabs.department)
     departmentsLoaded = departments.length
     await saveDepartments(departments)
     console.info(`[Chakra] Sheets sync: saved ${departmentsLoaded} departments`)
@@ -82,7 +85,7 @@ export const syncHrFromSheets = async (spreadsheetId: string): Promise<HrSyncRes
   }
 
   try {
-    const designations = await readDesignationSheet(spreadsheetId, accessToken)
+    const designations = await readDesignationSheet(spreadsheetId, accessToken, tabs.designation)
     designationsLoaded = designations.length
     await saveDesignations(designations)
     console.info(`[Chakra] Sheets sync: saved ${designationsLoaded} designations`)
@@ -92,9 +95,9 @@ export const syncHrFromSheets = async (spreadsheetId: string): Promise<HrSyncRes
   }
 
   try {
-    const employees = await readEmployeeSheet(spreadsheetId, accessToken)
-    employeesLoaded = employees.length
-    await saveEmployees(employees)
+    const emps = await readEmployeeSheet(spreadsheetId, accessToken, tabs.employee)
+    employeesLoaded = emps.length
+    await saveEmployees(emps)
     console.info(`[Chakra] Sheets sync: saved ${employeesLoaded} active employees`)
   } catch (err) {
     errors.push(`Employees sheet: ${err instanceof Error ? err.message : String(err)}`)
@@ -102,7 +105,7 @@ export const syncHrFromSheets = async (spreadsheetId: string): Promise<HrSyncRes
   }
 
   try {
-    const rows = await readAttendanceKeySheet(spreadsheetId, accessToken)
+    const rows = await readAttendanceKeySheet(spreadsheetId, accessToken, tabs.attendanceKey)
     attendanceKeysLoaded = rows.length
     await saveAttendanceKeys(rows)
     console.info(`[Chakra] Sheets sync: saved ${attendanceKeysLoaded} attendance keys`)
@@ -112,7 +115,7 @@ export const syncHrFromSheets = async (spreadsheetId: string): Promise<HrSyncRes
   }
 
   try {
-    const rows = await readHolidaySheet(spreadsheetId, accessToken)
+    const rows = await readHolidaySheet(spreadsheetId, accessToken, tabs.holiday)
     holidaysLoaded = rows.length
     await saveHolidays(rows)
     console.info(`[Chakra] Sheets sync: saved ${holidaysLoaded} holidays`)
@@ -122,7 +125,7 @@ export const syncHrFromSheets = async (spreadsheetId: string): Promise<HrSyncRes
   }
 
   try {
-    const rows = await readLeaveSheet(spreadsheetId, accessToken)
+    const rows = await readLeaveSheet(spreadsheetId, accessToken, tabs.leave)
     leavesLoaded = rows.length
     await saveLeaves(rows)
     console.info(`[Chakra] Sheets sync: saved ${leavesLoaded} leave types`)
@@ -152,6 +155,31 @@ export const syncHrFromSheets = async (spreadsheetId: string): Promise<HrSyncRes
   }
 }
 
+export interface ConfigSyncResult {
+  success: boolean
+  configsLoaded: number
+  errors: string[]
+}
+
+export const syncConfigFromSheets = async (spreadsheetId: string): Promise<ConfigSyncResult> => {
+  const accessToken = await getServiceAccountToken()
+  const tabs = getTabNames()
+  const errors: string[] = []
+  let configsLoaded = 0
+
+  try {
+    const rows = await readConfigSheet(spreadsheetId, accessToken, tabs.config)
+    configsLoaded = rows.length
+    saveConfigs(rows)
+    console.info(`[Chakra] Config sync: saved ${configsLoaded} config entries from Config tab`)
+  } catch (err) {
+    errors.push(`Config sheet: ${err instanceof Error ? err.message : String(err)}`)
+    console.warn('[Chakra] Config sync: error reading Config sheet:', err)
+  }
+
+  return { success: errors.length === 0, configsLoaded, errors }
+}
+
 export interface AppSyncResult {
   success: boolean
   appsLoaded: number
@@ -164,6 +192,7 @@ export interface AppSyncResult {
 
 export const syncAppsFromSheets = async (spreadsheetId: string): Promise<AppSyncResult> => {
   const accessToken = await getServiceAccountToken()
+  const tabs = getTabNames()
   const errors: string[] = []
   let appsLoaded = 0
   let appUsersLoaded = 0
@@ -172,7 +201,7 @@ export const syncAppsFromSheets = async (spreadsheetId: string): Promise<AppSync
   let employeeTeamsLoaded = 0
 
   try {
-    const rows = await readAppsSheet(spreadsheetId, accessToken)
+    const rows = await readAppsSheet(spreadsheetId, accessToken, tabs.app)
     appsLoaded = rows.length
     await saveApps(rows)
   } catch (err) {
@@ -181,7 +210,7 @@ export const syncAppsFromSheets = async (spreadsheetId: string): Promise<AppSync
   }
 
   try {
-    const rows = await readAppUsersSheet(spreadsheetId, accessToken)
+    const rows = await readAppUsersSheet(spreadsheetId, accessToken, tabs.appUser)
     appUsersLoaded = rows.length
     await saveAppUsers(rows)
   } catch (err) {
@@ -190,7 +219,7 @@ export const syncAppsFromSheets = async (spreadsheetId: string): Promise<AppSync
   }
 
   try {
-    const rows = await readAppTeamsSheet(spreadsheetId, accessToken)
+    const rows = await readAppTeamsSheet(spreadsheetId, accessToken, tabs.appTeam)
     appTeamsLoaded = rows.length
     await saveAppTeams(rows)
   } catch (err) {
@@ -199,7 +228,7 @@ export const syncAppsFromSheets = async (spreadsheetId: string): Promise<AppSync
   }
 
   try {
-    const rows = await readTeamsSheet(spreadsheetId, accessToken)
+    const rows = await readTeamsSheet(spreadsheetId, accessToken, tabs.team)
     teamsLoaded = rows.length
     await saveTeams(rows)
   } catch (err) {
@@ -208,7 +237,7 @@ export const syncAppsFromSheets = async (spreadsheetId: string): Promise<AppSync
   }
 
   try {
-    const rows = await readEmployeeTeamsSheet(spreadsheetId, accessToken)
+    const rows = await readEmployeeTeamsSheet(spreadsheetId, accessToken, tabs.employeeTeam)
     employeeTeamsLoaded = rows.length
     await saveEmployeeTeams(rows)
   } catch (err) {

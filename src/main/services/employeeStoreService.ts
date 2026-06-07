@@ -199,11 +199,11 @@ export const checkActiveEmployee = async (email: string): Promise<boolean> => {
 
 export const saveEmployeeOtp = async (email: string, otpHash: string, otpExpiry: number): Promise<boolean> => {
   const db = getDb()
+  // OTP is transient local state — never flagged for Sheets sync
   db.update(employees)
-    .set({ otpHash, otpExpiry, isDirty: true }) 
+    .set({ otpHash, otpExpiry })
     .where(eq(employees.email, email.trim().toLowerCase()))
     .run()
-    
   return true
 }
 
@@ -224,7 +224,7 @@ export const verifyEmployeeOtp = async (email: string, otp: string): Promise<{ s
   if (!matches) return { success: false, reason: 'invalid_otp' }
   
   db.update(employees)
-    .set({ otpHash: null, otpExpiry: null, isDirty: true })
+    .set({ otpHash: null, otpExpiry: null })
     .where(eq(employees.email, targetEmail))
     .run()
     

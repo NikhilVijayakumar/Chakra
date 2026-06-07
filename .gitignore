@@ -351,6 +351,7 @@ __marimo__/
 /.planning/phases/10-virtual-drive-directory-layout-defined-by-json-config-with-a/10-02-PLAN.md
 /.planning/phases/10-virtual-drive-directory-layout-defined-by-json-config-with-a/10-PATTERNS.md
 /config/chakra-494418-bddcc85e4c64.json
+/config/chakra-runtime.json
 /docs/design/
 /docs/references/
 /docs/rules/
@@ -537,3 +538,4 @@ __marimo__/
 /docs/sheets/MasterSheets - Leave.csv
 /docs/sheets/MasterSheets - Team.csv
 /.planning/phases/11-sync-architecture-and-loading-states/11-01-PLAN.md
+/data/prana/caches/chakra-cache.sqlite

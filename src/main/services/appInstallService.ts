@@ -13,17 +13,10 @@ import type {
 } from './googleSheetsService'
 
 // ── Directory helpers ─────────────────────────────────────────────────────────
+// Sandbox architecture: apps are installed to local app data.
+// Virtual drive filesystem virtualization is replaced by process-level sandbox isolation.
 
 const getAppsBaseDir = async (): Promise<string> => {
-  try {
-    const { driveControllerService } = await import('prana/main/services/driveControllerService')
-    const driveRoot = driveControllerService.getSystemDataRoot()
-    if (driveRoot) {
-      return join(driveRoot, 'apps')
-    }
-  } catch {
-    // virtual drive not available — fall through to local fallback
-  }
   const localAppData =
     process.env.LOCALAPPDATA ||
     process.env.APPDATA ||
@@ -321,7 +314,59 @@ const runCommand = (
 // Common built-output paths to search for the entry point after build
 const ENTRY_CANDIDATES = ['dist/index.html', 'build/index.html', 'out/renderer/index.html', 'public/index.html', 'index.html']
 
+// Aligns with Prana's RuntimeImageManifest (sandboxTypes.ts).
+// `permissions` is the ceiling — the host intersects these with what it's willing
+// to grant before injecting capabilities into the plugin session.
+// `entryHtml` is a Chakra extension for WebContentsView-based UI plugins.
+export interface RuntimeManifest {
+  schemaVersion: number
+  runtime: {
+    id: string
+    version: string
+    entry: string       // Node.js entry for background/service plugins
+    entryHtml?: string  // HTML entry for UI web-app plugins (Chakra extension)
+  }
+  permissions?: {
+    sqlite?: { read: boolean; write: boolean }
+    vault?: { read: boolean; write: boolean }
+    notifications?: { emit: boolean }
+    sync?: { read: boolean }
+  }
+}
+
+export type PluginCapabilities = NonNullable<RuntimeManifest['permissions']>
+
+export const readRuntimeManifest = (installPath: string): RuntimeManifest | null => {
+  try {
+    const p = join(installPath, 'runtime.json')
+    if (!existsSync(p)) return null
+    return JSON.parse(readFileSync(p, 'utf8')) as RuntimeManifest
+  } catch {
+    return null
+  }
+}
+
+// Default permissions for apps without a runtime.json.
+// Safe baseline: read-only SQLite, no vault, no write, no notifications.
+const DEFAULT_CAPABILITIES: PluginCapabilities = {
+  sqlite: { read: true, write: false },
+  notifications: { emit: false },
+  sync: { read: false }
+}
+
+export const getAppCapabilities = (installPath: string): PluginCapabilities => {
+  const manifest = readRuntimeManifest(installPath)
+  return manifest?.permissions ?? DEFAULT_CAPABILITIES
+}
+
 export const findAppEntryPoint = (installPath: string): string | null => {
+  // Prefer runtime.json entryHtml declaration
+  const manifest = readRuntimeManifest(installPath)
+  if (manifest?.runtime?.entryHtml) {
+    const declared = join(installPath, manifest.runtime.entryHtml)
+    if (existsSync(declared)) return declared
+  }
+  // Fallback: scan known build output paths
   for (const candidate of ENTRY_CANDIDATES) {
     const p = join(installPath, candidate)
     if (existsSync(p)) return p
@@ -393,9 +438,10 @@ export const installApp = async (
 
   const pkgPath = join(installPath, 'package.json')
   if (existsSync(pkgPath)) {
-    // Step 2: npm install
+    // Step 2: npm install — skip postinstall scripts (native rebuilds are irrelevant
+    // for plugins running inside Chakra's sandbox Electron runtime)
     onProgress?.('install', 35, '> Installing dependencies...')
-    await runCommand('npm', ['install', '--prefer-offline'], installPath,
+    await runCommand('npm', ['install', '--prefer-offline', '--ignore-scripts'], installPath,
       (line) => onProgress?.('install', 40, `> ${line.slice(0, 80)}`)
     )
     onProgress?.('install', 65, '> Dependencies installed.')
@@ -431,7 +477,25 @@ export const uninstallApp = async (appId: string): Promise<void> => {
   const db = getDb()
   const rec = db.select().from(installedApps).where(eq(installedApps.appId, appId)).get()
   if (rec?.installPath && existsSync(rec.installPath)) {
-    rmSync(rec.installPath, { recursive: true, force: true })
+    let deleted = false
+    // On Windows, Electron may hold file handles open after a plugin crash.
+    // Retry once after a short delay before giving up.
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        rmSync(rec.installPath, { recursive: true, force: true })
+        deleted = true
+        break
+      } catch (err: any) {
+        if (attempt === 1 && (err?.code === 'EPERM' || err?.code === 'EBUSY' || err?.code === 'ENOTEMPTY')) {
+          await new Promise(r => setTimeout(r, 1000))
+        } else {
+          throw err
+        }
+      }
+    }
+    if (!deleted) {
+      throw new Error(`Could not delete app directory — files may be locked. Close the app first and try again.`)
+    }
   }
   db.delete(installedApps).where(eq(installedApps.appId, appId)).run()
   console.info(`[Chakra] App uninstalled: ${appId}`)

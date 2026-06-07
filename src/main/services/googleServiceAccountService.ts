@@ -2,6 +2,7 @@ import { createSign } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { getServiceAccountKeyPath } from './bootstrapConfigService'
 
 const SCOPES = 'https://www.googleapis.com/auth/spreadsheets'
 
@@ -19,6 +20,10 @@ interface TokenCache {
 let tokenCache: TokenCache | null = null
 
 const resolveKeyPath = (): string => {
+  // Prefer the explicit path from chakra-runtime.json, fall back to well-known names.
+  const configured = getServiceAccountKeyPath()
+  if (configured && existsSync(configured)) return configured
+
   const candidates = [
     join(process.cwd(), 'config', 'chakra-service-account.json'),
     join(process.cwd(), 'config', 'chakra-494418-bddcc85e4c64.json'),
@@ -28,7 +33,7 @@ const resolveKeyPath = (): string => {
   for (const c of candidates) {
     if (existsSync(c)) return c
   }
-  throw new Error('Google service account key not found. Expected at config/chakra-service-account.json')
+  throw new Error('Google service account key not found. Set serviceAccountKeyPath in config/chakra-runtime.json')
 }
 
 const readKey = async (): Promise<ServiceAccountKey> =>

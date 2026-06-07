@@ -6,21 +6,10 @@ export const DEFAULT_PRANA_SYNC_CRON_ENABLED = 'true'
 export const DEFAULT_PRANA_SYNC_PUSH_CRON_EXPRESSION = '*/10 * * * *'
 export const DEFAULT_PRANA_SYNC_PULL_CRON_EXPRESSION = '*/15 * * * *'
 
+// Director identity is fetched from Google Sheets — admin employees in the sheet are directors.
+// Sync/channel settings come from the Config tab on the same sheet.
 const RUNTIME_KEY_SUFFIXES = [
   'DEFAULT_COMPANY',
-  'GOV_REPO_URL',
-  'GOV_REPO_PATH',
-  'DIRECTOR_NAME',
-  'DIRECTOR_EMAIL',
-  'DIRECTOR_PASSWORD',
-  'DIRECTOR_PASSWORD_HASH',
-  'VAULT_SPEC_VERSION',
-  'VAULT_TEMP_ZIP_EXT',
-  'VAULT_OUTPUT_PREFIX',
-  'VAULT_ARCHIVE_PASSWORD',
-  'VAULT_ARCHIVE_SALT',
-  'VAULT_KDF_ITERATIONS',
-  'VAULT_KEEP_TEMP_ON_CLOSE',
   'SYNC_PUSH_INTERVAL_MS',
   'SYNC_CRON_ENABLED',
   'SYNC_PUSH_CRON_EXPRESSION',
@@ -31,8 +20,7 @@ const RUNTIME_KEY_SUFFIXES = [
   'VIRTUAL_DRIVE_ENABLED',
   'VIRTUAL_DRIVE_FAIL_CLOSED',
   'GOOGLE_CLIENT_ID',
-  'GOOGLE_CLIENT_SECRET',
-  'GOOGLE_EMPLOYEE_SHEET_ID'
+  'GOOGLE_CLIENT_SECRET'
 ] as const
 
 export const CHAKRA_RUNTIME_KEYS = RUNTIME_KEY_SUFFIXES.map((suffix) => `CHAKRA_${suffix}`)
@@ -165,11 +153,6 @@ export const bridgeMainViteRuntimeEnvToRuntime = (env: NodeJS.ProcessEnv): void 
     setEnvValueIfMissing(env, chakraKey, preferredValue)
     setEnvValueIfMissing(env, dhiKey, preferredValue)
   }
-
-  const governanceRepoUrl = normalizeEnvValue(env.CHAKRA_GOV_REPO_URL) ?? normalizeEnvValue(env.DHI_GOV_REPO_URL)
-  const governanceRepoPath = normalizeEnvValue(env.CHAKRA_GOV_REPO_PATH) ?? normalizeEnvValue(env.DHI_GOV_REPO_PATH)
-  setEnvValueIfMissing(env, 'PRANA_GOVERNANCE_REPO_URL', governanceRepoUrl)
-  setEnvValueIfMissing(env, 'PRANA_GOVERNANCE_REPO_PATH', governanceRepoPath)
 }
 
 export const bridgeMainViteDhiEnvToRuntime = bridgeMainViteRuntimeEnvToRuntime

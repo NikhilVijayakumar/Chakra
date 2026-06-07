@@ -1,7 +1,7 @@
 import type { AuthStatus } from 'prana/main/services/authService'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import { STARTUP_RUNTIME_KEYS, normalizeEnvValue, readMainViteEnvValue } from './runtimeEnv'
+import { STARTUP_RUNTIME_KEYS } from './runtimeEnv'
 
 type StartupAuthStatusLoader = () => Promise<AuthStatus>
 type StartupDependencyId = 'ssh' | 'git' | 'virtual-drive'
@@ -74,116 +74,26 @@ const evaluateHostDependencies = async (): Promise<StartupDependencyCapabilityRe
   }
 }
 
+// Sandbox architecture uses process-level isolation (child_process.fork) instead
+// of virtual drive filesystem virtualization — no rclone/WinFsp dependency at startup.
 export const checkHostDependenciesStaged = async (): Promise<StartupDependencyDiagnostic[]> => {
-  const configuredDriveBinary =
-    process.env.CHAKRA_VIRTUAL_DRIVE_BINARY ??
-    process.env.DHI_VIRTUAL_DRIVE_BINARY ??
-    process.env.MAIN_VITE_CHAKRA_VIRTUAL_DRIVE_BINARY ??
-    process.env.MAIN_VITE_DHI_VIRTUAL_DRIVE_BINARY
-
   const diagnostics: StartupDependencyDiagnostic[] = []
   diagnostics.push(await checkDependency('ssh', 'ssh', ['-V'], 'PATH'))
   diagnostics.push(await checkDependency('git', 'git', ['--version'], 'PATH'))
-
-  if (configuredDriveBinary && configuredDriveBinary.trim().length > 0) {
-    diagnostics.push(
-      await checkDependency('virtual-drive', configuredDriveBinary.trim(), ['version'], 'CONFIG')
-    )
-  } else {
-    diagnostics.push(await checkDependency('virtual-drive', 'rclone', ['version'], 'PATH'))
-  }
-
   return diagnostics
 }
 
-const REQUIRED_STARTUP_KEYS = [
-  'CHAKRA_DEFAULT_COMPANY',
-  'CHAKRA_GOV_REPO_URL',
-  'CHAKRA_GOV_REPO_PATH',
-  'CHAKRA_DIRECTOR_NAME',
-  'CHAKRA_DIRECTOR_EMAIL',
-  'CHAKRA_DIRECTOR_PASSWORD_HASH',
-  'CHAKRA_VAULT_ARCHIVE_PASSWORD',
-  'CHAKRA_VAULT_ARCHIVE_SALT',
-  'CHAKRA_VAULT_KDF_ITERATIONS'
-] as const
-
-const PLACEHOLDER_PATTERNS = [/replace_with/i, /placeholder/i, /change_me/i, /^your_.+/i, /^todo$/i]
-
-const WEAK_VAULT_PASSWORDS = new Set(['default', 'password', 'changeme', 'prana', 'salt', 'secret', '12345678', 'letmein'])
-
-const isPlaceholderValue = (value: string): boolean => {
-  return PLACEHOLDER_PATTERNS.some((pattern) => pattern.test(value))
-}
-
-const isPositiveIntegerString = (value: string): boolean => {
-  return /^[1-9]\d*$/.test(value)
-}
 
 export const reportSecurityError = (operation: string, error: unknown): void => {
   console.error(`[Chakra] ${operation} failed:`, error)
 }
 
-export const warnWeakVaultConfig = (env: NodeJS.ProcessEnv = process.env): void => {
-  const getVal = (key: string): string | undefined =>
-    readMainViteEnvValue(env, key) ?? readMainViteEnvValue(env, key.replace('CHAKRA_', 'DHI_'))
-
-  const password = getVal('CHAKRA_VAULT_ARCHIVE_PASSWORD')
-  const salt = getVal('CHAKRA_VAULT_ARCHIVE_SALT')
-
-  if (password && WEAK_VAULT_PASSWORDS.has(password.toLowerCase())) {
-    console.warn(
-      '[Chakra] SECURITY WARNING: VAULT_ARCHIVE_PASSWORD is a known weak value. ' +
-      'Run `npm run generate:drive-key` to generate a strong key.'
-    )
-  }
-
-  if (salt && WEAK_VAULT_PASSWORDS.has(salt.toLowerCase())) {
-    console.warn(
-      '[Chakra] SECURITY WARNING: VAULT_ARCHIVE_SALT is a known weak value. ' +
-      'Run `npm run generate:drive-key` to generate a strong salt.'
-    )
-  }
-}
-
+// Startup validation only checks runtime dependencies (ssh, git).
+// Sync/email config comes from the Google Sheets Config tab → SQLite.
 export const validateRequiredStartupConfig = (
-  env: NodeJS.ProcessEnv = process.env
+  _env: NodeJS.ProcessEnv = process.env
 ): StartupSecurityIssue[] => {
-  const issues: StartupSecurityIssue[] = []
-
-  const getRequiredValue = (key: (typeof REQUIRED_STARTUP_KEYS)[number]): string | undefined => {
-    const legacyKey = key.replace('CHAKRA_', 'DHI_')
-    return readMainViteEnvValue(env, key) ?? readMainViteEnvValue(env, legacyKey)
-  }
-
-  for (const key of REQUIRED_STARTUP_KEYS) {
-    const value = getRequiredValue(key)
-
-    if (!value) {
-      issues.push({
-        key,
-        message: 'Missing required value'
-      })
-      continue
-    }
-
-    if (isPlaceholderValue(value)) {
-      issues.push({
-        key,
-        message: 'Placeholder value is not allowed'
-      })
-      continue
-    }
-
-    if (key === 'CHAKRA_VAULT_KDF_ITERATIONS' && !isPositiveIntegerString(value)) {
-      issues.push({
-        key,
-        message: 'Must be a positive integer'
-      })
-    }
-  }
-
-  return issues
+  return []
 }
 
 export const verifyStartupSafety = async (dependencies: {
@@ -259,4 +169,4 @@ export const verifyStartupSafety = async (dependencies: {
   }
 }
 
-export const startupRequiredKeys = [...REQUIRED_STARTUP_KEYS, ...STARTUP_RUNTIME_KEYS]
+export const startupRequiredKeys = [...STARTUP_RUNTIME_KEYS]

@@ -404,6 +404,42 @@ export const readLeaveSheet = async (
     }))
 }
 
+// ── Config (tab: "Config", columns: ID | Key | Value | Status | Sync) ───────
+
+export interface ConfigRow {
+  id: string
+  key: string
+  value: string
+  status: string
+}
+
+export const readConfigSheet = async (
+  spreadsheetId: string,
+  accessToken: string,
+  sheetName = 'Config'
+): Promise<ConfigRow[]> => {
+  const range = encodeURIComponent(`${sheetName}!A:F`)
+  const rows = parseValues(await sheetsGet(`${SHEETS_BASE}/${spreadsheetId}/values/${range}`, accessToken))
+  if (rows.length < 2) return []
+
+  const header = rows[0].map(h => h.trim().toLowerCase())
+  const idCol  = colAny(header, 'id')
+  const keyCol = colAny(header, 'key')
+  const valCol = colAny(header, 'value')
+  const stCol  = colAny(header, 'status')
+
+  return rows
+    .slice(1)
+    .filter(row => row[keyCol]?.trim())
+    .map(row => ({
+      id:     idCol >= 0 ? (row[idCol]?.trim() ?? '') : '',
+      key:    row[keyCol].trim(),
+      value:  valCol >= 0 ? (row[valCol]?.trim() ?? '') : '',
+      status: stCol >= 0 ? (row[stCol]?.trim().toLowerCase() ?? 'active') : 'active'
+    }))
+    .filter(r => r.status === 'active')
+}
+
 // ── Update Password in Google Sheets ────────────────────────────────────────
 
 const sheetsPut = async (url: string, accessToken: string, body: unknown): Promise<unknown> => {

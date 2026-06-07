@@ -80,21 +80,17 @@ describe('runtimeEnv', () => {
   it('bridges MAIN_VITE values only into missing runtime keys', () => {
     const env = createEnv({
       MAIN_VITE_CHAKRA_DEFAULT_COMPANY: 'acme-company',
-      DHI_GOV_REPO_URL: 'https://existing.example/repo',
-      MAIN_VITE_CHAKRA_GOV_REPO_URL: ' https://bridge.example/repo ',
-      MAIN_VITE_CHAKRA_DIRECTOR_NAME: 'Director Name',
       MAIN_VITE_CHAKRA_SYNC_PUSH_INTERVAL_MS: '300000',
       DHI_DIRECTOR_NAME: 'Existing Director'
     })
 
     bridgeMainViteRuntimeEnvToRuntime(env)
 
-    expect(env.DHI_GOV_REPO_URL).toBe('https://existing.example/repo')
-    expect(env.CHAKRA_GOV_REPO_URL).toBe('https://bridge.example/repo')
     expect(env.DHI_DIRECTOR_NAME).toBe('Existing Director')
     expect(env.DHI_SYNC_PUSH_INTERVAL_MS).toBe('300000')
     expect(env.CHAKRA_DEFAULT_COMPANY).toBe('acme-company')
-    expect(env.PRANA_GOVERNANCE_REPO_URL).toBe('https://existing.example/repo')
+    // governance/vault are Prana-internal and are not bridged from env
+    expect(env.PRANA_GOVERNANCE_REPO_URL).toBeUndefined()
   })
 
   it('reads runtime values from MAIN_VITE-prefixed keys', () => {

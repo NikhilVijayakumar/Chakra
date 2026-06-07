@@ -10,27 +10,9 @@ describe('startupSecurity', () => {
     vi.restoreAllMocks()
   })
 
-  it('reports missing and placeholder startup config values', () => {
-    const issues = validateRequiredStartupConfig(
-      makeEnv({
-        MAIN_VITE_CHAKRA_DEFAULT_COMPANY: 'acme-company',
-        MAIN_VITE_CHAKRA_GOV_REPO_URL: 'https://example.com/repo.git',
-        MAIN_VITE_CHAKRA_GOV_REPO_PATH: '/gov/repo',
-        MAIN_VITE_CHAKRA_DIRECTOR_NAME: 'Director',
-        MAIN_VITE_CHAKRA_DIRECTOR_EMAIL: 'director@example.com',
-        MAIN_VITE_CHAKRA_DIRECTOR_PASSWORD_HASH: 'replace_with_bcrypt_hash',
-        MAIN_VITE_CHAKRA_VAULT_ARCHIVE_PASSWORD: 'vault-pass',
-        MAIN_VITE_CHAKRA_VAULT_ARCHIVE_SALT: 'vault-salt',
-        MAIN_VITE_CHAKRA_VAULT_KDF_ITERATIONS: '   '
-      })
-    )
-
-    expect(issues).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ key: 'CHAKRA_DIRECTOR_PASSWORD_HASH' }),
-        expect.objectContaining({ key: 'CHAKRA_VAULT_KDF_ITERATIONS' })
-      ])
-    )
+  it('returns no issues at startup — vault config comes from Google Sheets Config tab, not env vars', () => {
+    const issues = validateRequiredStartupConfig(makeEnv({}))
+    expect(issues).toEqual([])
   })
 
   it('blocks startup when SSH verification is unavailable', async () => {
@@ -98,19 +80,9 @@ describe('startupSecurity', () => {
     expect(result.reason).toBeUndefined()
   })
 
-  it('reports invalid config when SSH is verified but config is broken', async () => {
+  it('allows startup when SSH is verified regardless of vault env vars — vault comes from Google Sheets Config tab', async () => {
     const result = await verifyStartupSafety({
-      env: makeEnv({
-        MAIN_VITE_CHAKRA_DEFAULT_COMPANY: 'acme-company',
-        MAIN_VITE_CHAKRA_GOV_REPO_URL: 'https://example.com/repo.git',
-        MAIN_VITE_CHAKRA_GOV_REPO_PATH: '/gov/repo',
-        MAIN_VITE_CHAKRA_DIRECTOR_NAME: 'Director',
-        MAIN_VITE_CHAKRA_DIRECTOR_EMAIL: 'director@example.com',
-        MAIN_VITE_CHAKRA_DIRECTOR_PASSWORD_HASH: 'replace_with_bcrypt_hash',
-        MAIN_VITE_CHAKRA_VAULT_ARCHIVE_PASSWORD: 'vault-pass',
-        MAIN_VITE_CHAKRA_VAULT_ARCHIVE_SALT: 'vault-salt',
-        MAIN_VITE_CHAKRA_VAULT_KDF_ITERATIONS: '0'
-      }),
+      env: makeEnv({}),
       loadAuthStatus: async () => ({
         sshVerified: true,
         repoReady: true,
@@ -126,14 +98,8 @@ describe('startupSecurity', () => {
       })
     })
 
-    expect(result.allowed).toBe(false)
-    expect(result.reason).toBe('invalid_config')
-    expect(result.issues).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ key: 'CHAKRA_DIRECTOR_PASSWORD_HASH' }),
-        expect.objectContaining({ key: 'CHAKRA_VAULT_KDF_ITERATIONS' })
-      ])
-    )
+    expect(result.allowed).toBe(true)
+    expect(result.issues).toEqual([])
   })
 
   it('accepts MAIN_VITE_DHI_DEFAULT_COMPANY as fallback when CHAKRA_DEFAULT_COMPANY is absent', async () => {

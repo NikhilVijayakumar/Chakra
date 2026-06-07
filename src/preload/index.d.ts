@@ -1460,11 +1460,34 @@ interface HostDependencyStatusSnapshot {
 }
 
 interface HostDependencyDiagnostic {
-  dependency: 'ssh' | 'git' | 'virtual-drive'
+  dependency: 'ssh' | 'git'
   available: boolean
   source: 'PATH' | 'CONFIG'
   command: string
   message: string
+}
+
+interface ChakraRuntimeConfig {
+  companyName: string | null
+  employeeSheetId: string | null
+  appCatalogSheetId: string | null
+}
+
+interface ChakraConfigSyncResult {
+  success: boolean
+  config: ChakraRuntimeConfig & { raw: Record<string, string> }
+  errors: string[]
+}
+
+interface SandboxEngineStatus {
+  state: string
+  containers: unknown[]
+}
+
+interface SandboxPluginLaunchResult {
+  success: boolean
+  sessionId?: string
+  error?: string
 }
 
 interface GoogleSheetsAuthStatus {
@@ -1496,12 +1519,21 @@ interface ChakraUserAppsResult {
   available: ChakraAppRecord[]
 }
 
-interface DhiApi {
+interface ChakraApi {
   [key: string]: unknown
   googleSheets: {
     getAuthStatus: () => Promise<GoogleSheetsAuthStatus>
     setEmployeeSheetId: (employeeSheetId: string) => Promise<void>
     sync: () => Promise<HrSyncResult>
+    checkHostReady: () => Promise<{
+      ready: boolean
+      hasEmployees: boolean
+      employeeCount: number
+      hasConfig: boolean
+      configSheetId: string | null
+      serviceAccountEmail: string | null
+      error?: string
+    }>
   }
   chakra: {
     getUserApps: (employeeId: string) => Promise<ChakraUserAppsResult>
@@ -1510,7 +1542,7 @@ interface DhiApi {
     checkHostDependencies: () => Promise<{ passed: boolean; diagnostics: HostDependencyDiagnostic[] }>
     getBootstrapConfig: () => Promise<Record<string, unknown>>
     bootstrapHost: (payload?: { config?: Record<string, unknown> }) => Promise<StartupStatusReport>
-    ensureDriveLayout: () => Promise<{ ok: boolean; driveRoot?: string; createdCount?: number; error?: string }>
+    ensureDriveLayout: () => Promise<{ ok: boolean; dataRoot?: string; error?: string }>
     getRuntimeConfig: () => Promise<RuntimeConfig>
     getBrandingConfig: () => Promise<Record<string, unknown>>
     getIntegrationStatus: () => Promise<IntegrationStatusSnapshot>
@@ -2004,13 +2036,34 @@ interface DhiApi {
     onInstallProgress: (
       callback: (data: { step: string; percent: number; log: string }) => void
     ) => () => void
+    onPluginCrashed: (
+      callback: (data: { runtimeId: string; reason: string }) => void
+    ) => () => void
+  }
+  // Chakra runtime config sourced from ChakraConfig Google Sheet
+  chakraConfig: {
+    get: () => Promise<ChakraRuntimeConfig>
+    sync: () => Promise<ChakraConfigSyncResult>
+  }
+  // Prana sandbox plugin host — launch, supervise, and shut down plugin processes
+  sandbox: {
+    initialize: () => Promise<{ success: boolean; error?: string }>
+    status: () => Promise<SandboxEngineStatus>
+    startModule: (imagePath: string, capabilities?: unknown) => Promise<{ success: boolean; error?: string }>
+    stopModule: () => Promise<{ success: boolean; error?: string }>
+    shutdown: () => Promise<{ success: boolean }>
+    launchPlugin: (imagePath: string, capabilities?: unknown, fixture?: unknown) => Promise<SandboxPluginLaunchResult>
+    shutdownPlugin: (sessionId: string) => Promise<{ success: boolean; error?: string }>
+    pluginStatus: (sessionId: string) => Promise<{ status: string; sessionId: string }>
+    pluginJournal: (sessionId: string) => Promise<unknown[]>
+    pluginHealth: (sessionId: string) => Promise<unknown>
   }
 }
 
 declare global {
   interface Window {
     electron: ElectronAPI
-    api: DhiApi
+    api: ChakraApi
     __pranaBootstrapConfig?: Record<string, unknown>
     __pranaBrandingConfig?: Record<string, unknown>
     __pranaTestBrandingConfig?: Record<string, unknown>

@@ -8,24 +8,17 @@ const hasElectronBridge = (): boolean =>
 
 /**
  * useBootViewModel
- * 
- * Manages the boot/splash sequence validation logic.
- * Migrated from useDhiSplashViewModel to support the new boot feature.
- * 
- * Validation steps:
- * 1. Platform Runtime Configuration (bootstrap + drive layout)
- * 2. Syncing Employee Directory (Google Sheets)
- * 3. Governance Repository Verification (SSH credentials)
- * 4. Mounting Local Encrypted Vault
- * 5. Probing Local AI Model Gateway
+ *
+ * Boot sequence for the Prana sandbox architecture:
+ * 1. Sandbox Runtime Bootstrap — host deps, notification centre, cron recovery
+ * 2. Syncing Platform Data    — Google Sheets → SQLite (config, employees, apps)
+ * 3. Loading Employee Directory — verify employees + config are in SQLite cache
  */
 export const useBootViewModel = (onComplete: () => void, onSshFailure: () => void) => {
   const [stages, setStages] = useState<BootSequenceStage[]>([
-    { id: 'runtime', title: 'Platform Runtime Configuration', status: 'pending' },
-    { id: 'sheets', title: 'Syncing Employee Directory', status: 'pending' },
-    { id: 'ssh', title: 'Governance Repository Verification', status: 'pending' },
-    { id: 'vault', title: 'Mounting Local Encrypted Vault', status: 'pending' },
-    { id: 'gateway', title: 'Probing Local AI Model Gateway', status: 'pending' }
+    { id: 'sandbox-bootstrap', title: 'Sandbox Runtime Bootstrap', status: 'pending' },
+    { id: 'sheets-sync', title: 'Syncing Platform Data', status: 'pending' },
+    { id: 'data-ready', title: 'Loading Employee Directory', status: 'pending' },
   ])
 
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
@@ -52,7 +45,9 @@ export const useBootViewModel = (onComplete: () => void, onSshFailure: () => voi
       let currentIndex = startingIndex
 
       try {
-        // ──── Step 0: Platform Runtime (bootstrap + drive layout) ────
+        // ──── Step 0: Sandbox Runtime Bootstrap ────
+        // Runs: host dependency checks, notification centre init, cron recovery.
+        // Engine is already operational before this window opens (bootstrapPranaMain).
         if (currentIndex === 0) {
           updateStage(currentIndex, { status: 'loading', errorMessage: undefined })
 
@@ -63,49 +58,48 @@ export const useBootViewModel = (onComplete: () => void, onSshFailure: () => voi
             })
           } else {
             try {
-              let config: Record<string, unknown> = {}
-              try {
-                if ((window as any).api?.app?.getBootstrapConfig) {
-                  const ipcConfig = await (window as any).api.app.getBootstrapConfig()
-                  if (ipcConfig && typeof ipcConfig === 'object') {
-                    config = ipcConfig as Record<string, unknown>
-                  }
-                }
-              } catch {
-                // best-effort
-              }
-
-              const startup = await (window as any).api.app.bootstrapHost({ config })
+              const startup = await (window as any).api.app.bootstrapHost({})
 
               if (startup.overallStatus === 'BLOCKED') {
-                const blockedStage = startup.stages?.find((s: any) => s.status === 'BLOCKED')
+                const blockedStage = startup.stages?.find((s: any) => s.status === 'FAILED' && s.isBlocking)
                 updateStage(currentIndex, {
-                  status: 'success',
-                  detailMessage: `Warning: ${blockedStage?.message ?? 'Some startup stages blocked.'}`
+                  status: 'error',
+                  errorMessage: `Bootstrap blocked: ${blockedStage?.message ?? 'A blocking stage failed.'}`
                 })
-              } else {
-                updateStage(currentIndex, {
-                  status: 'success',
-                  detailMessage: `Bootstrap complete (${startup.overallStatus}).`
-                })
+                setIsFatalActionableError(true)
+                isExecutingRef.current = false
+                return
+              }
+
+              const hostDeps = startup.stages?.find((s: any) => s.id === 'host-dependencies')
+              const detailParts = [
+                hostDeps?.status === 'SUCCESS' ? 'Host deps OK' : hostDeps?.status === 'FAILED' ? `Host deps: ${hostDeps.message}` : null,
+                startup.overallStatus === 'DEGRADED' ? 'Some services degraded' : null,
+              ].filter(Boolean)
+
+              updateStage(currentIndex, {
+                status: startup.overallStatus === 'READY' ? 'success' : 'success',
+                detailMessage: detailParts.length > 0
+                  ? detailParts.join(' · ')
+                  : `Bootstrap complete (${startup.overallStatus}).`
+              })
+
+              // Ensure local data directory layout exists.
+              try {
+                if ((window as any).api?.app?.ensureDriveLayout) {
+                  await (window as any).api.app.ensureDriveLayout()
+                }
+              } catch (layoutErr) {
+                console.warn('[Chakra] ensureDriveLayout invoke failed:', layoutErr)
               }
             } catch (error: any) {
               updateStage(currentIndex, {
                 status: 'error',
-                errorMessage: error.message || 'Fatal error during Platform Runtime bootstrap.'
+                errorMessage: error.message || 'Fatal error during sandbox runtime bootstrap.'
               })
               setIsFatalActionableError(true)
               isExecutingRef.current = false
               return
-            }
-
-            // Ensure virtual drive directory layout exists and init SQLite employee store.
-            try {
-              if ((window as any).api?.app?.ensureDriveLayout) {
-                await (window as any).api.app.ensureDriveLayout()
-              }
-            } catch (layoutErr) {
-              console.warn('[Chakra] ensureDriveLayout invoke failed:', layoutErr)
             }
           }
 
@@ -113,7 +107,7 @@ export const useBootViewModel = (onComplete: () => void, onSshFailure: () => voi
           if (isMountedRef.current) setCurrentStepIndex(currentIndex)
         }
 
-        // ──── Step 1: Google Sheets — Employee Sync ────
+        // ──── Step 1: Sync Platform Data (Google Sheets → SQLite) ────
         if (currentIndex === 1) {
           updateStage(currentIndex, { status: 'loading', errorMessage: undefined })
 
@@ -137,16 +131,21 @@ export const useBootViewModel = (onComplete: () => void, onSshFailure: () => voi
                 const result = await gs.sync()
                 console.info('[Chakra] Sheets sync result:', result)
                 if (result?.success) {
+                  const parts = [
+                    result.configsLoaded != null && `${result.configsLoaded} configs`,
+                    result.employeesLoaded != null && `${result.employeesLoaded} employees`,
+                    result.appsLoaded != null && `${result.appsLoaded} apps`
+                  ].filter(Boolean).join(', ')
                   updateStage(currentIndex, {
                     status: 'success',
-                    detailMessage: `Synced ${result.departmentsLoaded} departments, ${result.designationsLoaded} designations, ${result.employeesLoaded} employees.`
+                    detailMessage: `Synced ${parts || 'data'} from Google Sheets.`
                   })
                 } else {
                   const firstError = result?.errors?.[0] ?? 'Sync failed.'
                   console.warn('[Chakra] Sheets sync failed:', result?.errors)
                   updateStage(currentIndex, {
                     status: 'skipped',
-                    detailMessage: `Employee sync failed — ${firstError} Using cached data.`
+                    detailMessage: `Sheets sync failed — ${firstError} Using cached data if available.`
                   })
                 }
               }
@@ -163,100 +162,41 @@ export const useBootViewModel = (onComplete: () => void, onSshFailure: () => voi
           if (isMountedRef.current) setCurrentStepIndex(currentIndex)
         }
 
-        // ──── Step 2: SSH Verification ────
+        // ──── Step 2: Verify Data Readiness (employees + config in SQLite) ────
         if (currentIndex === 2) {
           updateStage(currentIndex, { status: 'loading', errorMessage: undefined })
 
           if (!isElectron) {
             updateStage(currentIndex, {
               status: 'skipped',
-              detailMessage: 'Browser mode — SSH check skipped.'
+              detailMessage: 'Browser mode — data readiness check skipped.'
             })
           } else {
             try {
-              const dependencyStatus = await (window as any).api.app.getHostDependencyStatus?.()
-              if (dependencyStatus && !dependencyStatus.passed) {
-                updateStage(currentIndex, {
-                  status: 'error',
-                  errorMessage: dependencyStatus.message || 'Host dependencies are unavailable.'
-                })
-                isExecutingRef.current = false
-                setTimeout(onSshFailure, 1500)
-                return
-              }
+              const gs = (window.api as any).googleSheets
+              const readiness = await gs?.checkHostReady?.()
 
-              const sshResult = await (window as any).api.auth.getStatus()
-
-              if (!sshResult.sshVerified) {
-                updateStage(currentIndex, {
-                  status: 'error',
-                  errorMessage: sshResult.sshMessage ?? 'SSH access denied.'
-                })
-                isExecutingRef.current = false
-                setTimeout(onSshFailure, 1500)
-                return
-              }
-
-              updateStage(currentIndex, {
-                status: 'success',
-                detailMessage: 'SSH credentials validated.'
-              })
-            } catch (error: any) {
-              updateStage(currentIndex, {
-                status: 'error',
-                errorMessage: error.message || 'SSH verification failed.'
-              })
-              setIsFatalActionableError(true)
-              isExecutingRef.current = false
-              return
-            }
-          }
-
-          currentIndex++
-          if (isMountedRef.current) setCurrentStepIndex(currentIndex)
-        }
-
-        // ──── Step 3: Vault Mount ────
-        if (currentIndex === 3) {
-          updateStage(currentIndex, { status: 'loading', errorMessage: undefined })
-          await new Promise((r) => setTimeout(r, 500))
-          updateStage(currentIndex, {
-            status: 'success',
-            detailMessage: 'Vault initialized.'
-          })
-
-          currentIndex++
-          if (isMountedRef.current) setCurrentStepIndex(currentIndex)
-        }
-
-        // ──── Step 4: Gateway Probe ────
-        if (currentIndex === 4) {
-          updateStage(currentIndex, { status: 'loading', errorMessage: undefined })
-
-          if (!isElectron) {
-            updateStage(currentIndex, {
-              status: 'skipped',
-              detailMessage: 'Browser mode — gateway probe skipped.'
-            })
-          } else {
-            try {
-              const result = await (window as any).api.modelGateway.probe()
-
-              if (!result?.activeProvider) {
+              if (readiness?.hasEmployees) {
+                const countSuffix = readiness.employeeCount > 0 ? ` (${readiness.employeeCount} employees)` : ''
                 updateStage(currentIndex, {
                   status: 'success',
-                  detailMessage: 'Model gateway unavailable — proceeding anyway.'
+                  detailMessage: `Employee data loaded${countSuffix}.`
+                })
+              } else if (!readiness?.hasConfig) {
+                updateStage(currentIndex, {
+                  status: 'skipped',
+                  detailMessage: 'Config not set — add configSheetId to config/chakra-runtime.json.'
                 })
               } else {
                 updateStage(currentIndex, {
-                  status: 'success',
-                  detailMessage: `Connected: ${result.activeProvider}/${result.activeModel}`
+                  status: 'skipped',
+                  detailMessage: 'No employee data in cache — sync from Google Sheets to load employees.'
                 })
               }
-            } catch {
+            } catch (err: any) {
               updateStage(currentIndex, {
-                status: 'success',
-                detailMessage: 'Gateway probe failed — proceeding anyway.'
+                status: 'skipped',
+                detailMessage: `Data readiness check unavailable: ${err?.message ?? 'unknown'}. Using cached data.`
               })
             }
           }

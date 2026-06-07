@@ -42,14 +42,27 @@ export const AppRunnerContainer: FC = () => {
       setErrorMsg(err instanceof Error ? err.message : 'Launch failed')
     })
 
+    // If the plugin renderer crashes, main process sends this event.
+    // Clean up and navigate home so the host app stays usable.
+    const unsubCrash = window.api.apps.onPluginCrashed(({ reason }) => {
+      console.warn('[AppRunner] Plugin crashed:', reason, '— navigating home')
+      setStatus('error')
+      setErrorMsg(`Plugin crashed (${reason}). Returning to home.`)
+      setTimeout(() => navigate('/home'), 2000)
+    })
+
     // On unmount, clean up the embedded view
     return () => {
+      unsubCrash()
       window.api.apps.exitWebview().catch(() => { /* ignore */ })
     }
   }, [appId, navigate])
 
-  const handleExit = async () => {
-    await window.api.apps.exitWebview().catch(() => { /* ignore */ })
+  const handleExit = () => {
+    // Navigate immediately — don't wait for IPC. The cleanup in useEffect
+    // will call exitWebview when this component unmounts, which removes the
+    // embedded view. Firing it here too so the view is gone before home renders.
+    window.api.apps.exitWebview().catch(() => {})
     navigate('/home')
   }
 

@@ -23,8 +23,8 @@
       "@renderer/*": [
         "src/renderer/src/*"
       ],
-      "prana/ui/constants/pranaConfig": [
-        "src/renderer/src/shared/pranaConfigCompat.ts"
+      "prana/ui/*": [
+        "src/renderer/src/shared/prana-ui/*"
       ],
       "prana/*": [
         "node_modules/prana/src/*"

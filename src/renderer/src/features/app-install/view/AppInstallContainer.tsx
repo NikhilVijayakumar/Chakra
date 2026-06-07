@@ -38,13 +38,16 @@ export const AppInstallContainer: FC = () => {
     // Start installation
     window.api.apps.install(appId, appName, cloneUrl).then((result) => {
       unsubscribe()
-      if (!result.success) {
+      if (result.success) {
+        setProgress(100)
+        setCurrentLog('> Installation complete.')
+        setPhase('complete')
+      } else {
         setPhase('error')
         setError(result.error ?? 'Installation failed')
         setCurrentLog(`> Error: ${result.error ?? 'unknown'}`)
         setProgress(0)
       }
-      // success path is handled by 'complete' progress event above
     }).catch((err: unknown) => {
       unsubscribe()
       const msg = err instanceof Error ? err.message : 'Unknown error'

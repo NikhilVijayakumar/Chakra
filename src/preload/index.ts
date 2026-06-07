@@ -5,16 +5,37 @@ import { electronAPI } from '@electron-toolkit/preload'
 const api = {
   app: {
     checkHostDependencies: () => electronAPI.ipcRenderer.invoke('app:check-host-dependencies'),
-    getBootstrapConfig: () => electronAPI.ipcRenderer.invoke('app:get-bootstrap-config'),
-    bootstrapHost: (payload?: { config?: unknown }) =>
-      electronAPI.ipcRenderer.invoke('app:bootstrap-host', payload),
+    // Prana handlers use a safe() wrapper that returns { ok, data }. Unwrap here.
+    getBootstrapConfig: async () => {
+      const res = await electronAPI.ipcRenderer.invoke('app:get-bootstrap-config')
+      return res?.ok ? res.data : null
+    },
+    bootstrapHost: async (payload?: { config?: unknown }) => {
+      const res = await electronAPI.ipcRenderer.invoke('app:bootstrap-host', payload)
+      return res?.ok ? res.data : { overallStatus: 'BLOCKED', stages: [] }
+    },
+    // Post-boot setup: initialise local data paths and fire background sync.
+    // Named ensureDriveLayout for backward compat — no virtual drive is mounted in sandbox mode.
     ensureDriveLayout: () => electronAPI.ipcRenderer.invoke('chakra:ensure-drive-layout'),
-    getRuntimeConfig: () => electronAPI.ipcRenderer.invoke('app:get-runtime-config'),
-    getBrandingConfig: () => electronAPI.ipcRenderer.invoke('app:get-branding-config'),
-    getIntegrationStatus: () => electronAPI.ipcRenderer.invoke('app:get-integration-status'),
-    getStartupStatus: () => electronAPI.ipcRenderer.invoke('app:get-startup-status'),
+    getRuntimeConfig: async () => {
+      const res = await electronAPI.ipcRenderer.invoke('app:get-runtime-config')
+      return res?.ok ? res.data : null
+    },
+    getBrandingConfig: async () => {
+      const res = await electronAPI.ipcRenderer.invoke('app:get-branding-config')
+      return res?.ok ? res.data : null
+    },
+    getIntegrationStatus: async () => {
+      const res = await electronAPI.ipcRenderer.invoke('app:get-integration-status')
+      return res?.ok ? res.data : null
+    },
+    getStartupStatus: async () => {
+      const res = await electronAPI.ipcRenderer.invoke('app:get-startup-status')
+      return res?.ok ? res.data : null
+    },
     getHostDependencyStatus: async () => {
-      const startupStatus = await electronAPI.ipcRenderer.invoke('app:get-startup-status')
+      const res = await electronAPI.ipcRenderer.invoke('app:get-startup-status')
+      const startupStatus = res?.ok ? res.data : null
       const stages = Array.isArray(startupStatus?.stages) ? startupStatus.stages : []
       const dependencyStage = stages.find(
         (stage: any) => stage?.id === 'host-dependencies' || stage?.stage === 'host-dependencies'
@@ -38,7 +59,10 @@ const api = {
     }
   },
   auth: {
-    getStatus: () => electronAPI.ipcRenderer.invoke('auth:get-status'),
+    getStatus: async () => {
+      const res = await electronAPI.ipcRenderer.invoke('auth:get-status')
+      return res?.ok ? res.data : { sshVerified: false, repoReady: false, sshMessage: res?.error ?? 'Auth status unavailable', clonedNow: false, repoPath: '', repoUrl: '' }
+    },
     login: (email: string, password: string) =>
       electronAPI.ipcRenderer.invoke('auth:login', { email, password }),
     loginWithSheets: (email: string, password: string) =>
@@ -66,7 +90,32 @@ const api = {
     getAuthStatus: () => electronAPI.ipcRenderer.invoke('chakra:google-auth-status'),
     setEmployeeSheetId: (employeeSheetId: string) =>
       electronAPI.ipcRenderer.invoke('chakra:sheets-employee-sheet-set', { employee_sheet_id: employeeSheetId }),
-    sync: () => electronAPI.ipcRenderer.invoke('chakra:sheets-sync')
+    sync: () => electronAPI.ipcRenderer.invoke('chakra:sheets-sync'),
+    checkHostReady: () => electronAPI.ipcRenderer.invoke('chakra:check-host-ready')
+  },
+  // ── Chakra runtime config (sourced from ChakraConfig Google Sheet) ──────────
+  chakraConfig: {
+    get: () => electronAPI.ipcRenderer.invoke('chakra:get-config'),
+    sync: () => electronAPI.ipcRenderer.invoke('chakra:sync-config')
+  },
+  // ── Sandbox plugin host — launch/manage plugins via Prana sandbox engine ────
+  sandbox: {
+    initialize: () => electronAPI.ipcRenderer.invoke('sandbox:initialize'),
+    status: () => electronAPI.ipcRenderer.invoke('sandbox:status'),
+    startModule: (imagePath: string, capabilities?: unknown) =>
+      electronAPI.ipcRenderer.invoke('sandbox:start-module', { imagePath, capabilities }),
+    stopModule: () => electronAPI.ipcRenderer.invoke('sandbox:stop-module'),
+    shutdown: () => electronAPI.ipcRenderer.invoke('sandbox:shutdown'),
+    launchPlugin: (imagePath: string, capabilities?: unknown, fixture?: unknown) =>
+      electronAPI.ipcRenderer.invoke('sandbox:plugin-launch', { imagePath, capabilities, fixture }),
+    shutdownPlugin: (sessionId: string) =>
+      electronAPI.ipcRenderer.invoke('sandbox:plugin-shutdown', { sessionId }),
+    pluginStatus: (sessionId: string) =>
+      electronAPI.ipcRenderer.invoke('sandbox:plugin-status', { sessionId }),
+    pluginJournal: (sessionId: string) =>
+      electronAPI.ipcRenderer.invoke('sandbox:plugin-journal', { sessionId }),
+    pluginHealth: (sessionId: string) =>
+      electronAPI.ipcRenderer.invoke('sandbox:plugin-health', { sessionId })
   },
   settings: {
     load: () => electronAPI.ipcRenderer.invoke('settings:load'),
@@ -551,6 +600,12 @@ const api = {
         callback(data as { step: string; percent: number; log: string })
       electronAPI.ipcRenderer.on('chakra:install-progress', listener)
       return () => electronAPI.ipcRenderer.removeListener('chakra:install-progress', listener)
+    },
+    onPluginCrashed: (callback: (data: { runtimeId: string; reason: string }) => void) => {
+      const listener = (_event: unknown, data: unknown) =>
+        callback(data as { runtimeId: string; reason: string })
+      electronAPI.ipcRenderer.on('chakra:plugin-crashed', listener)
+      return () => electronAPI.ipcRenderer.removeListener('chakra:plugin-crashed', listener)
     }
   },
   workOrders: {

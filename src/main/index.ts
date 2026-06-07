@@ -1,6 +1,62 @@
 import { app, BrowserWindow } from 'electron'
-import { copyFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readFileSync, unlinkSync } from 'node:fs'
 import { dirname, join } from 'node:path'
+
+// Patch better-sqlite3 Statement prototype to add sql.js compat shims.
+// Prana's sqlite services were written against sql.js API (free/bind/step/getAsObject)
+// but the runtime uses better-sqlite3 which lacks those methods.
+;(() => {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const BetterSQLite3 = require('better-sqlite3') as typeof import('better-sqlite3')
+    const _db = new BetterSQLite3(':memory:')
+    const _stmt = _db.prepare('SELECT 1')
+    const proto = Object.getPrototypeOf(_stmt) as Record<string, unknown>
+    _db.close()
+
+    if (!proto.free) {
+      proto.free = function () { return true }
+    }
+
+    if (!proto.bind) {
+      proto.bind = function (params?: unknown[] | unknown) {
+        this._sqlJsBound = Array.isArray(params) ? params : params !== undefined ? [params] : []
+        return true
+      }
+    }
+
+    // Wrap get/all/run so bound params are used when no args supplied
+    const origGet = proto.get as (...a: unknown[]) => unknown
+    proto.get = function (...args: unknown[]) {
+      if (args.length === 0 && this._sqlJsBound?.length) return origGet.call(this, ...this._sqlJsBound)
+      return origGet.call(this, ...args)
+    }
+
+    const origAll = proto.all as (...a: unknown[]) => unknown
+    proto.all = function (...args: unknown[]) {
+      if (args.length === 0 && this._sqlJsBound?.length) return origAll.call(this, ...this._sqlJsBound)
+      return origAll.call(this, ...args)
+    }
+
+    if (!proto.step) {
+      proto.step = function () {
+        if (!this._sqlJsIter) {
+          this._sqlJsIter = (this.iterate as (...a: unknown[]) => Iterable<unknown>)(...(this._sqlJsBound ?? []))
+        }
+        this._sqlJsCurrent = (this._sqlJsIter as Iterator<unknown>).next()
+        return !(this._sqlJsCurrent as IteratorResult<unknown>).done
+      }
+    }
+
+    if (!proto.getAsObject) {
+      proto.getAsObject = function () {
+        return (this._sqlJsCurrent as IteratorResult<unknown>)?.value ?? {}
+      }
+    }
+  } catch {
+    // better-sqlite3 unavailable — skip patching
+  }
+})()
 import {
   applyPranaRuntimeDefaults,
   bridgeMainViteRuntimeEnvToRuntime,
@@ -8,45 +64,37 @@ import {
   loadWorkspaceEnvFile,
   resolveRendererUrl
 } from './services/runtimeEnv'
-import { verifyStartupSafety, warnWeakVaultConfig } from './services/startupSecurity'
+import { verifyStartupSafety } from './services/startupSecurity'
 import { setPranaPlatformRuntime } from 'prana/main/services/pranaPlatformRuntime'
 import { setPranaRuntimeConfig } from 'prana/main/services/pranaRuntimeConfig'
-import { pickFreeDriveLetters } from './services/driveLetterService'
 
 import { initTemplateRenderer, renderEmailTemplate } from './services/templateRenderer'
-
-let driveLifecycleHooksRegistered = false
 
 // ── Embedded app WebContentsView state ────────────────────────────────────────
 let activeEmbeddedView: import('electron').WebContentsView | null = null
 let embeddedViewResizeHandler: (() => void) | null = null
 let embeddedViewWindow: import('electron').BrowserWindow | null = null
 const EMBEDDED_TOP_BAR_H = 52
+// Set to true by exit-webview to abort any in-progress loadFile in launch-webview.
+// Prevents orphaned views when the user exits before the initial load completes.
+let activeLaunchCancelled = false
 
-const registerDriveLifecycleHooks = (): void => {
-  if (driveLifecycleHooksRegistered) {
-    return
+// ── Active plugin session (capability-governed IPC gateway) ───────────────────
+// Tracks which plugin is running and what it is allowed to do.
+// Only one plugin runs at a time; capabilities are cleared on exit.
+interface ActivePluginSession {
+  appId: string
+  runtimeId: string
+  capabilities: {
+    sqlite?: { read: boolean; write: boolean }
+    vault?: { read: boolean; write: boolean }
+    notifications?: { emit: boolean }
+    sync?: { read: boolean }
   }
-
-  driveLifecycleHooksRegistered = true
-  app.once('before-quit', (event) => {
-    // Prevent the default quit so we can await dispose() before exiting.
-    // app.once ensures this handler runs only once, so the subsequent app.quit()
-    // call below does not re-trigger it.
-    event.preventDefault()
-    void (async () => {
-      try {
-        const { driveControllerService } = await import('prana/main/services/driveControllerService')
-        await driveControllerService.dispose()
-        console.info('[Chakra] Virtual drives ejected cleanly')
-      } catch (error) {
-        console.warn('[Chakra] Could not eject virtual drives during shutdown:', error)
-      } finally {
-        app.quit()
-      }
-    })()
-  })
+  webContentsId: number
+  sandboxSessionId: string
 }
+let activePlugin: ActivePluginSession | null = null
 
 const showUnsafeStartupWindow = async (message: string, diagnosticsJson?: string): Promise<void> => {
   await app.whenReady()
@@ -81,21 +129,27 @@ const bootstrapPranaMain = async (): Promise<void> => {
   const runtimeEnvValue = (suffix: string): string | undefined => {
     return process.env[`CHAKRA_${suffix}`] ?? process.env[`DHI_${suffix}`]
   }
-  const runtimeBooleanValue = (suffix: string): boolean | undefined => {
-    const value = runtimeEnvValue(suffix)
-    if (!value) {
-      return undefined
-    }
 
-    const normalized = value.trim().toLowerCase()
-    if (normalized === 'true') {
-      return true
+  // Removes a corrupt runtime-config.sqlite from the Prana app-data dir so that
+  // initializeDatabase() can start fresh with an in-memory DB on the next attempt.
+  const recoverCorruptPranaDb = async (): Promise<void> => {
+    const home = process.env.USERPROFILE || process.env.HOME || ''
+    const pranaDir = join(home, '.prana')
+    const dhiDir = join(home, '.dhi')
+    const appDir = (existsSync(dhiDir) && !existsSync(pranaDir)) ? dhiDir : pranaDir
+    for (const f of [join(appDir, 'runtime-config.sqlite'), join(appDir, 'runtime-config.sqlite.tmp')]) {
+      if (existsSync(f)) { unlinkSync(f); console.info('[Chakra] Deleted corrupt Prana DB file:', f) }
     }
-    if (normalized === 'false') {
-      return false
+    const { sqliteConfigStoreService: scs } = await import('prana/main/services/sqliteConfigStoreService')
+    const { getPranaRuntimeConfig: getRtCfg } = await import('prana/main/services/pranaRuntimeConfig')
+    const cfg = getRtCfg()
+    if (cfg) {
+      if (isDevelopment) {
+        await scs.overwriteFromRuntimeProps(cfg)
+      } else {
+        await scs.seedFromRuntimePropsIfEmpty(cfg)
+      }
     }
-
-    return undefined
   }
 
   try {
@@ -106,62 +160,70 @@ const bootstrapPranaMain = async (): Promise<void> => {
       userProfileDir: process.env.USERPROFILE
     })
 
+    // Runtime config source: chakra-runtime.json (serviceAccountKeyPath + configSheetId).
+    // All master data syncs from the configured Google Sheet into SQLite on boot.
+
+    // Set Prana's internal SQLite root to a path near the app.
+    // Dev:  <repo>/data/prana  (inside the project, easy to inspect and wipe)
+    // Prod: <exe-dir>/data/prana  (next to the installed executable)
+    try {
+      const sqliteRoot = isDevelopment
+        ? join(app.getAppPath(), 'data', 'prana')
+        : join(dirname(app.getPath('exe')), 'data', 'prana')
+      if (!existsSync(sqliteRoot)) {
+        mkdirSync(sqliteRoot, { recursive: true })
+      }
+      const { setSqliteRootOverride } = await import('prana/main/services/governanceRepoService')
+      setSqliteRootOverride(sqliteRoot)
+      console.info(`[Chakra] SQLite root: ${sqliteRoot}`)
+    } catch (err) {
+      console.warn('[Chakra] Could not set SQLite root override at boot:', err)
+    }
+
+    let sqliteSyncConfig = null
+    try {
+      const { buildSyncConfigFromSQLite } = await import('./services/configStoreService')
+      sqliteSyncConfig = buildSyncConfigFromSQLite()
+    } catch {
+      // SQLite not ready on first run — sync defaults apply
+    }
+
     const config = {
       director: {
-        name: runtimeEnvValue('DIRECTOR_NAME') || 'Director',
-        email: runtimeEnvValue('DIRECTOR_EMAIL') || 'director@example.com',
-        password: runtimeEnvValue('DIRECTOR_PASSWORD'),
-        passwordHash: runtimeEnvValue('DIRECTOR_PASSWORD_HASH')
+        name: runtimeEnvValue('DEFAULT_COMPANY') || 'Chakra Host',
+        email: runtimeEnvValue('DIRECTOR_EMAIL') || 'host@bavans.app',
       },
       governance: {
-        repoUrl: runtimeEnvValue('GOV_REPO_URL') || '',
-        repoPath: runtimeEnvValue('GOV_REPO_PATH') || ''
+        repoUrl: 'not-configured',
+        repoPath: 'not-configured'
       },
       vault: {
-        specVersion: runtimeEnvValue('VAULT_SPEC_VERSION'),
-        tempZipExtension: runtimeEnvValue('VAULT_TEMP_ZIP_EXT'),
-        outputPrefix: runtimeEnvValue('VAULT_OUTPUT_PREFIX'),
-        archivePassword: runtimeEnvValue('VAULT_ARCHIVE_PASSWORD'),
-        archiveSalt: runtimeEnvValue('VAULT_ARCHIVE_SALT'),
-        kdfIterations: runtimeEnvValue('VAULT_KDF_ITERATIONS')
-          ? parseInt(runtimeEnvValue('VAULT_KDF_ITERATIONS') ?? '600000')
-          : 600000,
-        keepTempOnClose: runtimeEnvValue('VAULT_KEEP_TEMP_ON_CLOSE') === 'true'
+        specVersion: 'v1',
+        tempZipExtension: '.vdhi',
+        outputPrefix: 'chakra_vault_export_',
+        // Prana sandbox manages vault internally. Placeholders satisfy the schema;
+        // Chakra never accesses vault directly.
+        archivePassword: 'chakra-host',
+        archiveSalt: 'chakra-host-salt',
+        kdfIterations: 210000,
+        keepTempOnClose: false
       },
-      sync: {
-        pushIntervalMs: runtimeEnvValue('SYNC_PUSH_INTERVAL_MS')
-          ? parseInt(runtimeEnvValue('SYNC_PUSH_INTERVAL_MS') ?? '120000')
-          : 120000,
-        cronEnabled: runtimeEnvValue('SYNC_CRON_ENABLED') === 'true',
-        pushCronExpression: runtimeEnvValue('SYNC_PUSH_CRON_EXPRESSION') || '*/10 * * * *',
-        pullCronExpression: runtimeEnvValue('SYNC_PULL_CRON_EXPRESSION') || '*/15 * * * *'
+      sync: sqliteSyncConfig?.sync ?? {
+        pushIntervalMs: 120000,
+        cronEnabled: false,
+        pushCronExpression: '*/10 * * * *',
+        pullCronExpression: '*/15 * * * *'
       },
       channels: {
         telegramChannelId: runtimeEnvValue('TELEGRAM_CHANNEL_ID'),
         slackChannelId: runtimeEnvValue('SLACK_CHANNEL_ID'),
         teamsChannelId: runtimeEnvValue('TEAMS_CHANNEL_ID')
       },
-      virtualDrives: (() => {
-        const driveLetters = pickFreeDriveLetters()
-        const explicitSystem = runtimeEnvValue('VIRTUAL_DRIVE_SYSTEM_LETTER')
-        const explicitVault = runtimeEnvValue('VIRTUAL_DRIVE_VAULT_LETTER')
-        const systemMount = explicitSystem ?? driveLetters?.system
-        const vaultMount = explicitVault ?? driveLetters?.vault
-        if (systemMount && vaultMount) {
-          console.info(`[Chakra] Virtual drives: system=${systemMount} vault=${vaultMount}`)
-        }
-        return {
-          enabled: runtimeBooleanValue('VIRTUAL_DRIVE_ENABLED') ?? !isDevelopment,
-          systemCryptPassword: runtimeEnvValue('VAULT_ARCHIVE_PASSWORD'),
-          failClosed: runtimeBooleanValue('VIRTUAL_DRIVE_FAIL_CLOSED') ?? !isDevelopment,
-          ...(systemMount ? { system: { mountPoint: systemMount } } : {}),
-          ...(vaultMount ? { vault: { mountPoint: vaultMount } } : {})
-        }
-      })()
+      virtualDrives: { enabled: false, failClosed: false }
     }
 
     setPranaRuntimeConfig(config)
-    console.info('[Chakra] Injected environment into Prana platform runtime')
+    console.info('[Chakra] Prana runtime config set')
   } catch (error) {
     console.warn('[Chakra] Failed to inject environment into Prana platform runtime', error)
   }
@@ -198,8 +260,6 @@ const bootstrapPranaMain = async (): Promise<void> => {
     return
   }
 
-  warnWeakVaultConfig(process.env)
-
   // css-tree's CJS build reads ../data/patch.json relative to bundled chunks.
   // In dev/runtime bundling that file may be absent under out/main/data.
   try {
@@ -216,7 +276,9 @@ const bootstrapPranaMain = async (): Promise<void> => {
     console.warn('[Chakra] Could not stage css-tree patch.json runtime asset', error)
   }
 
-  await import('prana/main/index')
+  const { registerIpcHandlers } = await import('prana/main/index')
+  registerIpcHandlers()
+  console.info('[Chakra] Registered Prana IPC handlers')
 
   // Seed the SQLite bootstrap config immediately after Prana registers its
   // window-all-closed / before-quit handlers (which call cleanupTemporaryWorkspace).
@@ -238,84 +300,30 @@ const bootstrapPranaMain = async (): Promise<void> => {
     } else {
       console.warn('[Chakra] Early seed skipped: runtime config not available yet')
     }
-  } catch (error) {
-    console.warn('[Chakra] Early SQLite config seed failed:', error)
+  } catch (error: any) {
+    if (error?.code === 'SQLITE_NOTADB') {
+      try {
+        await recoverCorruptPranaDb()
+        console.info('[Chakra] Early SQLite config seeded after corrupt DB recovery')
+      } catch (retryErr) {
+        console.warn('[Chakra] Early SQLite recovery retry failed:', retryErr)
+      }
+    } else {
+      console.warn('[Chakra] Early SQLite config seed failed:', error)
+    }
   }
 
-  try {
-    await import('prana/main/services/driveControllerService')
-    // Prana mounts system storage during app:bootstrap-host after runtime config
-    // is validated and seeded. Mounting here can force app data root to an
-    // unavailable drive letter (for example "S:") before bootstrap completes.
-    registerDriveLifecycleHooks()
-  } catch (error) {
-    console.warn('[Chakra] Could not register virtual drive lifecycle hooks:', error)
-  }
-
+  // ── Sandbox-based post-boot: set up local SQLite paths + background sync ──────
+  // Replaces the old virtual-drive-based chakra:ensure-drive-layout flow.
+  // Apps are now isolated via Prana's sandboxRuntimeEngine (process isolation),
+  // not filesystem virtual drives.
   try {
     const { ipcMain } = await import('electron')
-    const { driveControllerService } = await import('prana/main/services/driveControllerService')
-    const { driveLayoutService } = await import('./services/driveLayoutService')
-    ipcMain.handle('chakra:ensure-drive-layout', async () => {
-      try {
-        const driveRoot = driveControllerService.getSystemDataRoot()
-        const created = await driveLayoutService.ensureDirectories(driveRoot)
 
-        // Route SQLite to S:\cache\sqlite (matching drive-layout.json) so that
-        // authStoreService.mkdir(getSqliteRoot()) never targets the bare drive root.
-        // This works around authStoreService using bare mkdir() without the WinFsp
-        // EPERM guard that mkdirSafe() provides (pending Prana fix in authStoreService.ts).
-        try {
-          const sqliteRoot = join(driveRoot, 'cache', 'sqlite')
-
-          // Tell Prana services (authStoreService etc.) about the new root
-          const { setSqliteRootOverride } = await import('prana/main/services/governanceRepoService')
-          setSqliteRootOverride(sqliteRoot)
-          console.info('[Chakra] SQLite root pinned to cache/sqlite under drive root')
-
-          // Tell Chakra's own employeeStoreService directly — avoids the
-          // cross-chunk require() that fails in the built output
-          const { setSqliteRoot } = await import('./services/employeeStoreService')
-          setSqliteRoot(sqliteRoot)
-          console.info('[Chakra] SQLite root set; employee store will lazy-init on first use')
-        } catch (sqliteErr) {
-          console.warn('[Chakra] Could not pin SQLite root override:', sqliteErr)
-        }
-
-        // Fire startup sync in background — does not block the boot response
-        void (async () => {
-          try {
-            const serviceAccount = await import('./services/googleServiceAccountService')
-            const status = await serviceAccount.getServiceAccountStatus()
-            if (!status.available) return
-
-            const { getStoredSheetId } = await import('./services/employeeStoreService')
-            const spreadsheetId =
-              (await getStoredSheetId()) ??
-              runtimeEnvValue('GOOGLE_EMPLOYEE_SHEET_ID') ??
-              ''
-            if (!spreadsheetId) return
-
-            const { syncHrFromSheets, syncAppsFromSheets } = await import('./services/sheetsSyncService')
-            const [hr, apps] = await Promise.all([
-              syncHrFromSheets(spreadsheetId),
-              syncAppsFromSheets(spreadsheetId)
-            ])
-            console.info(
-              `[Chakra] Startup sync complete — employees: ${hr.employeesLoaded}, apps: ${apps.appsLoaded}`
-            )
-          } catch (err) {
-            console.warn('[Chakra] Startup sync failed (non-fatal):', err)
-          }
-        })()
-
-        return { ok: true, driveRoot, createdCount: created.length }
-      } catch (err) {
-        console.warn('[Chakra] ensureDirectories failed (non-fatal):', err)
-        return { ok: false, error: (err as Error)?.message ?? 'unknown error' }
-      }
-    })
-    console.info('[Chakra] Registered chakra:ensure-drive-layout IPC handler')
+    // Keep the old IPC name so the existing renderer code keeps working.
+    // SQLite root is already set at boot — this is a no-op confirmation for the renderer.
+    ipcMain.handle('chakra:ensure-drive-layout', async () => ({ ok: true }))
+    console.info('[Chakra] Registered chakra:ensure-drive-layout IPC handler (sandbox mode)')
   } catch (error) {
     console.warn('[Chakra] Could not register chakra:ensure-drive-layout IPC:', error)
   }
@@ -343,20 +351,133 @@ const bootstrapPranaMain = async (): Promise<void> => {
       return { success: true }
     })
 
+    // Full pre-login sync: called from Boot Step 1 — MUST complete before login screen.
+    // Order: ChakraConfig (sheet IDs) → Config tab (runtime config) → HR data → app catalog.
+    // All data flows: Google Sheets → SQLite cache. App always reads from cache.
     ipcMain.handle('chakra:sheets-sync', async () => {
-      const zeros = { departmentsLoaded: 0, designationsLoaded: 0, employeesLoaded: 0 }
+      const zeros = {
+        configsLoaded: 0, departmentsLoaded: 0, designationsLoaded: 0, employeesLoaded: 0,
+        attendanceKeysLoaded: 0, holidaysLoaded: 0, leavesLoaded: 0, appsLoaded: 0,
+        appUsersLoaded: 0, appTeamsLoaded: 0, teamsLoaded: 0, employeeTeamsLoaded: 0
+      }
+      const errors: string[] = []
+
       try {
         const status = await serviceAccount.getServiceAccountStatus()
         if (!status.available) {
           return { success: false, errors: [status.error ?? 'Service account key not available'], ...zeros }
         }
-        const spreadsheetId = (await employeeStore.getStoredSheetId()) ?? runtimeEnvValue('GOOGLE_EMPLOYEE_SHEET_ID') ?? ''
-        if (!spreadsheetId) {
-          return { success: false, errors: ['Spreadsheet ID not configured. Enter it in Google Sheets Settings.'], ...zeros }
+
+        // Sheet IDs come directly from chakra-runtime.json — not looked up from Google Sheets.
+        const { getBootstrapConfigSheetId, getAppCatalogSheetId } = await import('./services/bootstrapConfigService')
+        const employeeSheetId = getBootstrapConfigSheetId() ?? ''
+        if (!employeeSheetId) {
+          return { success: false, errors: ['configSheetId not set in config/chakra-runtime.json'], ...zeros }
         }
-        return sheetsSync.syncHrFromSheets(spreadsheetId)
+
+        // 3. Sync Config tab from the employee/HR sheet → SQLite configs table (runtime config source).
+        const { syncConfigFromSheets, syncHrFromSheets, syncAppsFromSheets } = sheetsSync
+        const configResult = await syncConfigFromSheets(employeeSheetId)
+        if (!configResult.success) errors.push(...configResult.errors)
+
+        // 4. Refresh sync settings + email service from fresh SQLite values.
+        //    Vault/governance are Prana-internal and never sourced from Sheets.
+        if (configResult.configsLoaded > 0) {
+          try {
+            const { buildSyncConfigFromSQLite, buildEmailConfigFromSQLite } =
+              await import('./services/configStoreService')
+            const { getPranaRuntimeConfig } = await import('prana/main/services/pranaRuntimeConfig')
+            const syncConfig = buildSyncConfigFromSQLite()
+            if (syncConfig) {
+              const current = getPranaRuntimeConfig()
+              if (current) {
+                setPranaRuntimeConfig({ ...current, sync: syncConfig.sync })
+                console.info('[Chakra] Sync config refreshed from Config tab')
+              }
+            }
+            const emailCfg = buildEmailConfigFromSQLite()
+            if (emailCfg.agentMailApiKey && emailCfg.systemInboxId) {
+              const { configureChakraEmailService } = await import('./services/chakraEmailService')
+              const { renderEmailTemplate } = await import('./services/templateRenderer')
+              configureChakraEmailService(
+                emailCfg.agentMailApiKey,
+                emailCfg.systemInboxId,
+                async (tpl, data) => { try { return await renderEmailTemplate(tpl, data) } catch { return '' } }
+              )
+              console.info('[Chakra] Email service reconfigured from Config tab')
+            }
+          } catch (err) {
+            console.warn('[Chakra] Sync config/email refresh failed (non-fatal):', err)
+          }
+        }
+
+        // 5. Sync employee/HR data (employees, departments, designations, etc.).
+        const hrResult = await syncHrFromSheets(employeeSheetId)
+        if (!hrResult.success) errors.push(...hrResult.errors)
+
+        // 6. Sync app catalog (separate sheet if appCatalogSheetId set, otherwise same sheet).
+        const appCatalogSheetId = getAppCatalogSheetId() ?? ''
+        let appsResult = { appsLoaded: 0, appUsersLoaded: 0, appTeamsLoaded: 0, teamsLoaded: 0, employeeTeamsLoaded: 0, errors: [] as string[] }
+        if (appCatalogSheetId) {
+          appsResult = await syncAppsFromSheets(appCatalogSheetId)
+          if (!appsResult) appsResult = { appsLoaded: 0, appUsersLoaded: 0, appTeamsLoaded: 0, teamsLoaded: 0, employeeTeamsLoaded: 0, errors: [] }
+          errors.push(...appsResult.errors)
+        } else {
+          console.warn('[Chakra] App catalog sheet ID not configured — app catalog sync skipped')
+        }
+
+        console.info(
+          `[Chakra] Pre-login sync complete — configs: ${configResult.configsLoaded}, employees: ${hrResult.employeesLoaded}, apps: ${appsResult.appsLoaded}`
+        )
+
+        return {
+          success: errors.length === 0,
+          configsLoaded: configResult.configsLoaded,
+          departmentsLoaded: hrResult.departmentsLoaded,
+          designationsLoaded: hrResult.designationsLoaded,
+          employeesLoaded: hrResult.employeesLoaded,
+          attendanceKeysLoaded: hrResult.attendanceKeysLoaded,
+          holidaysLoaded: hrResult.holidaysLoaded,
+          leavesLoaded: hrResult.leavesLoaded,
+          appsLoaded: appsResult.appsLoaded,
+          appUsersLoaded: appsResult.appUsersLoaded,
+          appTeamsLoaded: appsResult.appTeamsLoaded,
+          teamsLoaded: appsResult.teamsLoaded,
+          employeeTeamsLoaded: appsResult.employeeTeamsLoaded,
+          errors
+        }
       } catch (err) {
         return { success: false, errors: [(err as Error).message ?? 'Sync failed'], ...zeros }
+      }
+    })
+
+    ipcMain.handle('chakra:check-host-ready', async () => {
+      try {
+        const hasEmp = await employeeStore.hasEmployees()
+        const { getBootstrapConfigSheetId } = await import('./services/bootstrapConfigService')
+        const configSheetId = getBootstrapConfigSheetId()
+        const saStatus = await serviceAccount.getServiceAccountStatus()
+
+        let employeeCount = 0
+        if (hasEmp) {
+          try {
+            const { getDb } = await import('./db/init')
+            const db = getDb()
+            const row = db.prepare('SELECT COUNT(*) as count FROM employees').get() as { count: number } | undefined
+            employeeCount = row?.count ?? 0
+          } catch { /* count is optional */ }
+        }
+
+        return {
+          ready: hasEmp,
+          hasEmployees: hasEmp,
+          employeeCount,
+          hasConfig: !!configSheetId && saStatus.available,
+          configSheetId: configSheetId ?? null,
+          serviceAccountEmail: saStatus.email ?? null
+        }
+      } catch (err) {
+        return { ready: false, hasEmployees: false, employeeCount: 0, hasConfig: false, error: (err as Error).message }
       }
     })
 
@@ -406,8 +527,17 @@ const bootstrapPranaMain = async (): Promise<void> => {
     const { ipcMain } = await import('electron')
     const { configureChakraEmailService, sendChakraEmail } = await import('./services/chakraEmailService')
 
-    const agentMailApiKey = process.env.CHAKRA_AGENTMAIL_API_KEY ?? process.env.MAIN_VITE_CHAKRA_AGENTMAIL_API_KEY
-    const systemInboxId = process.env.CHAKRA_SYSTEM_INBOX_ID ?? process.env.MAIN_VITE_CHAKRA_SYSTEM_INBOX_ID
+    // Email config: SQLite configs table (populated from Config tab) → env vars as dev/testing fallback.
+    let agentMailApiKey: string | null | undefined
+    let systemInboxId: string | null | undefined
+    try {
+      const { buildEmailConfigFromSQLite } = await import('./services/configStoreService')
+      const emailCfg = buildEmailConfigFromSQLite()
+      agentMailApiKey = emailCfg.agentMailApiKey
+      systemInboxId = emailCfg.systemInboxId
+    } catch { /* SQLite not ready */ }
+    agentMailApiKey ??= process.env.CHAKRA_AGENTMAIL_API_KEY ?? process.env.MAIN_VITE_CHAKRA_AGENTMAIL_API_KEY
+    systemInboxId ??= process.env.CHAKRA_SYSTEM_INBOX_ID ?? process.env.MAIN_VITE_CHAKRA_SYSTEM_INBOX_ID
 
     if (agentMailApiKey && systemInboxId) {
       initTemplateRenderer()
@@ -534,10 +664,8 @@ const bootstrapPranaMain = async (): Promise<void> => {
           try {
             const serviceAccount = await import('./services/googleServiceAccountService')
             const accessToken = await serviceAccount.getServiceAccountToken()
-            const spreadsheetId =
-              (await employeeStore.getStoredSheetId()) ??
-              process.env.CHAKRA_GOOGLE_EMPLOYEE_SHEET_ID ??
-              process.env.MAIN_VITE_CHAKRA_GOOGLE_EMPLOYEE_SHEET_ID
+            const { getBootstrapConfigSheetId } = await import('./services/bootstrapConfigService')
+            const spreadsheetId = getBootstrapConfigSheetId()
             if (!spreadsheetId) { lastErr = 'No spreadsheet ID configured'; break }
             const sheetsService = await import('./services/googleSheetsService')
             await sheetsService.updateEmployeePasswordInSheet(spreadsheetId, accessToken, email, hash)
@@ -589,13 +717,41 @@ const bootstrapPranaMain = async (): Promise<void> => {
         if (!status.available) {
           return { success: false, errors: [status.error ?? 'Service account not available'], ...zeros }
         }
-        const spreadsheetId = (await employeeStore.getStoredSheetId()) ?? runtimeEnvValue('GOOGLE_EMPLOYEE_SHEET_ID') ?? ''
-        if (!spreadsheetId) {
-          return { success: false, errors: ['Spreadsheet ID not configured'], ...zeros }
+        const { getAppCatalogSheetId } = await import('./services/bootstrapConfigService')
+        const appCatalogId = getAppCatalogSheetId() ?? ''
+        if (!appCatalogId) {
+          return { success: false, errors: ['App catalog sheet ID not configured (set configSheetId or appCatalogSheetId in config/chakra-runtime.json)'], ...zeros }
         }
-        return syncAppsFromSheets(spreadsheetId)
+        return syncAppsFromSheets(appCatalogId)
       } catch (err) {
         return { success: false, errors: [(err as Error).message ?? 'Sync failed'], ...zeros }
+      }
+    })
+
+    // Sync Config tab from the main sheet into SQLite.
+    ipcMain.handle('chakra:sync-config', async () => {
+      try {
+        const { getBootstrapConfigSheetId } = await import('./services/bootstrapConfigService')
+        const sheetId = getBootstrapConfigSheetId()
+        if (!sheetId) {
+          return { success: false, errors: ['configSheetId not set in config/chakra-runtime.json'] }
+        }
+        const { syncConfigFromSheets } = await import('./services/sheetsSyncService')
+        const result = await syncConfigFromSheets(sheetId)
+        return { success: result.success, errors: result.errors }
+      } catch (err) {
+        return { success: false, errors: [(err as Error).message ?? 'Config sync failed'] }
+      }
+    })
+
+    // Return the currently stored Chakra config (reads from runtime config + SQLite, no network call).
+    ipcMain.handle('chakra:get-config', async () => {
+      const { getBootstrapConfigSheetId, getAppCatalogSheetId } = await import('./services/bootstrapConfigService')
+      const { getChakraConfigValue } = await import('./services/chakraConfigSheetService')
+      return {
+        companyName: getChakraConfigValue('company_name'),
+        employeeSheetId: getBootstrapConfigSheetId(),
+        appCatalogSheetId: getAppCatalogSheetId()
       }
     })
 
@@ -639,6 +795,28 @@ const bootstrapPranaMain = async (): Promise<void> => {
 
     ipcMain.handle('chakra:uninstall-app', async (_event, payload: { appId: string }) => {
       try {
+        // If the app being uninstalled is currently running as an active plugin,
+        // force-close its WebContentsView first to release all file locks.
+        if (activePlugin?.appId === payload.appId) {
+          const targetWin = embeddedViewWindow
+          if (activeEmbeddedView) {
+            try { targetWin?.contentView.removeChildView(activeEmbeddedView) } catch { /* ignore */ }
+            if (embeddedViewResizeHandler && targetWin) targetWin.off('resize', embeddedViewResizeHandler)
+            try { activeEmbeddedView.webContents.close() } catch { /* ignore */ }
+          }
+          if (activePlugin.sandboxSessionId) {
+            try {
+              const { sandboxRuntimeEngine } = await import('prana/main/features/sandbox/sandboxRuntimeEngine')
+              await sandboxRuntimeEngine.stopModuleContainer(activePlugin.sandboxSessionId)
+            } catch { /* ignore */ }
+          }
+          activeEmbeddedView = null
+          embeddedViewResizeHandler = null
+          embeddedViewWindow = null
+          activePlugin = null
+          // Give Electron a moment to release file handles before deleting
+          await new Promise(r => setTimeout(r, 500))
+        }
         await appSvc.uninstallApp(payload.appId)
         return { success: true }
       } catch (err) {
@@ -646,12 +824,19 @@ const bootstrapPranaMain = async (): Promise<void> => {
       }
     })
 
-    // ── Embedded launch via WebContentsView ─────────────────────────────────
+    // ── Embedded launch via WebContentsView (sandbox container model) ──────────
+    // Each installed app is a plugin container. Only one runs at a time.
+    // Architecture: WebContentsView provides Electron-native process isolation for UI
+    // plugins; sandboxRuntimeEngine.startModuleContainer() tracks the lifecycle in the
+    // Prana container model (IDLE→RUNNING→DESTROYED) and activates the supervisor.
     ipcMain.handle('chakra:launch-webview', async (event, payload: { appId: string }) => {
       try {
         const { WebContentsView, BrowserWindow } = await import('electron')
         const win = BrowserWindow.fromWebContents(event.sender)
         if (!win) return { success: false, error: 'No window found' }
+
+        // Reset the cancellation flag — a new launch supersedes any prior exit request.
+        activeLaunchCancelled = false
 
         const { installPath } = appSvc.getInstallRecord(payload.appId)
         if (!installPath || !existsSync(installPath)) {
@@ -663,21 +848,81 @@ const bootstrapPranaMain = async (): Promise<void> => {
           return { success: false, error: 'No built output found. Reinstall the app to build it.' }
         }
 
-        // Clean up any existing embedded view
+        // Read plugin capabilities from runtime.json (or use safe defaults)
+        const capabilities = appSvc.getAppCapabilities(installPath)
+        const manifest = appSvc.readRuntimeManifest(installPath)
+        const runtimeId = manifest?.runtime?.id ?? payload.appId
+
+        // Enforce one plugin at a time: stop the current container before starting a new one
         if (activeEmbeddedView && embeddedViewWindow) {
           try { embeddedViewWindow.contentView.removeChildView(activeEmbeddedView) } catch { /* ignore */ }
           if (embeddedViewResizeHandler) embeddedViewWindow.off('resize', embeddedViewResizeHandler)
           try { activeEmbeddedView.webContents.close() } catch { /* ignore */ }
+          if (activePlugin?.sandboxSessionId) {
+            try {
+              const { sandboxRuntimeEngine } = await import('prana/main/features/sandbox/sandboxRuntimeEngine')
+              await sandboxRuntimeEngine.stopModuleContainer(activePlugin.sandboxSessionId)
+            } catch { /* ignore — previous container already gone */ }
+          }
           activeEmbeddedView = null
           embeddedViewResizeHandler = null
           embeddedViewWindow = null
+          activePlugin = null
         }
+
+        // Defensive guard: if a crash left a RUNNING module container behind
+        // (crash handler's async stopModuleContainer may have failed or the session
+        // was never cleaned up), force-stop it now so startModuleContainer won't throw.
+        try {
+          const { sandboxRuntimeEngine } = await import('prana/main/features/sandbox/sandboxRuntimeEngine')
+          const stuckModule = sandboxRuntimeEngine.listContainers().find(
+            (c: { type: string; state: string }) => c.type === 'module' && c.state === 'RUNNING'
+          )
+          if (stuckModule) {
+            // Use known sessionId if available; otherwise pass a sentinel —
+            // stopModuleContainer resolves the container by containerId, not sessionId,
+            // so the sentinel is safely ignored by the session manager.
+            const sid = activePlugin?.sandboxSessionId ?? 'orphaned'
+            await sandboxRuntimeEngine.stopModuleContainer(sid)
+            console.warn('[Chakra] Force-stopped orphaned module container before launch')
+          }
+        } catch { /* ignore — if engine not yet operational, startModuleContainer will handle it */ }
+
+        // Register this app with the sandbox runtime engine for lifecycle tracking.
+        // resolveImage reads runtime.json; if absent we build a synthetic RuntimeImage
+        // from the appId + entryPoint so the engine still manages a proper container.
+        let sandboxSessionId = ''
+        try {
+          const { sandboxRuntimeEngine } = await import('prana/main/features/sandbox/sandboxRuntimeEngine')
+          const { runtimeImageManagerService } = await import('prana/main/features/sandbox/runtimeImageManagerService')
+          let image
+          try {
+            image = await sandboxRuntimeEngine.resolveImage(installPath)
+          } catch {
+            const synthManifest = {
+              schemaVersion: 1,
+              runtime: { id: runtimeId, version: '1.0.0', entry: entryPoint },
+              permissions: capabilities,
+            }
+            image = runtimeImageManagerService.resolveFromManifest(synthManifest, entryPoint)
+          }
+          const session = await sandboxRuntimeEngine.startModuleContainer(image, capabilities)
+          sandboxSessionId = session.sessionId
+        } catch (engineErr) {
+          console.warn('[Chakra] Sandbox engine module start failed (non-fatal):', engineErr)
+        }
+
+        // Plugin preload: gives the plugin access only to declared capabilities.
+        // Located at out/main/preload/plugin.js (built alongside the host preload).
+        const pluginPreloadPath = join(__dirname, 'preload', 'plugin.js')
+        const hasPluginPreload = existsSync(pluginPreloadPath)
 
         const view = new WebContentsView({
           webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
-            sandbox: false
+            sandbox: false,
+            ...(hasPluginPreload ? { preload: pluginPreloadPath } : {})
           }
         })
 
@@ -686,8 +931,31 @@ const bootstrapPranaMain = async (): Promise<void> => {
         win.contentView.addChildView(view)
         await view.webContents.loadFile(entryPoint)
 
+        // If exit-webview was called while we were waiting for loadFile, clean up and bail out.
+        // Without this guard, the view gets set AFTER the exit handler already ran,
+        // leaving an orphaned WebContentsView with no way to remove it.
+        if (activeLaunchCancelled) {
+          activeLaunchCancelled = false
+          try { win.contentView.removeChildView(view) } catch { /* ignore */ }
+          try { view.webContents.close() } catch { /* ignore */ }
+          if (sandboxSessionId) {
+            try {
+              const { sandboxRuntimeEngine } = await import('prana/main/features/sandbox/sandboxRuntimeEngine')
+              await sandboxRuntimeEngine.stopModuleContainer(sandboxSessionId)
+            } catch { /* ignore */ }
+          }
+          return { success: false, error: 'Launch cancelled by exit request' }
+        }
+
         activeEmbeddedView = view
         embeddedViewWindow = win
+        activePlugin = {
+          appId: payload.appId,
+          runtimeId,
+          capabilities,
+          webContentsId: view.webContents.id,
+          sandboxSessionId,
+        }
 
         embeddedViewResizeHandler = () => {
           if (!activeEmbeddedView) return
@@ -696,8 +964,29 @@ const bootstrapPranaMain = async (): Promise<void> => {
         }
         win.on('resize', embeddedViewResizeHandler)
 
-        console.info(`[Chakra] Embedded app launched: ${payload.appId} → ${entryPoint}`)
-        return { success: true }
+        // Auto-cleanup on plugin crash so the host app remains usable.
+        view.webContents.on('render-process-gone', (_event, details) => {
+          console.warn(`[Chakra] Plugin renderer crashed (${details.reason}): ${runtimeId} — cleaning up`)
+          try { win.contentView.removeChildView(view) } catch { /* ignore */ }
+          if (embeddedViewResizeHandler) win.off('resize', embeddedViewResizeHandler)
+          // Capture sessionId in a local const BEFORE nulling activePlugin —
+          // the import().then() callback runs async, after activePlugin is already null.
+          const crashedSessionId = activePlugin?.sandboxSessionId ?? null
+          activeEmbeddedView = null
+          embeddedViewResizeHandler = null
+          embeddedViewWindow = null
+          activePlugin = null
+          if (crashedSessionId) {
+            import('prana/main/features/sandbox/sandboxRuntimeEngine').then(({ sandboxRuntimeEngine }) => {
+              sandboxRuntimeEngine.stopModuleContainer(crashedSessionId).catch(() => { /* ignore */ })
+            }).catch(() => { /* ignore */ })
+          }
+          // Notify the host renderer so it can navigate back to the home screen.
+          win.webContents.send('chakra:plugin-crashed', { runtimeId, reason: details.reason })
+        })
+
+        console.info(`[Chakra] Plugin container started: ${runtimeId} (${payload.appId}) session=${sandboxSessionId || 'none'} → ${entryPoint}`)
+        return { success: true, runtimeId, capabilities, sandboxSessionId }
       } catch (err) {
         return { success: false, error: (err as Error).message }
       }
@@ -705,6 +994,8 @@ const bootstrapPranaMain = async (): Promise<void> => {
 
     ipcMain.handle('chakra:exit-webview', async (event) => {
       try {
+        // Signal any in-progress launch to abort after loadFile resolves.
+        activeLaunchCancelled = true
         const { BrowserWindow } = await import('electron')
         const win = BrowserWindow.fromWebContents(event.sender)
         if (activeEmbeddedView) {
@@ -714,10 +1005,17 @@ const bootstrapPranaMain = async (): Promise<void> => {
             if (embeddedViewResizeHandler) targetWin.off('resize', embeddedViewResizeHandler)
           }
           try { activeEmbeddedView.webContents.close() } catch { /* ignore */ }
-          activeEmbeddedView = null
-          embeddedViewResizeHandler = null
-          embeddedViewWindow = null
         }
+        if (activePlugin?.sandboxSessionId) {
+          try {
+            const { sandboxRuntimeEngine } = await import('prana/main/features/sandbox/sandboxRuntimeEngine')
+            await sandboxRuntimeEngine.stopModuleContainer(activePlugin.sandboxSessionId)
+          } catch { /* ignore — container may already be stopped */ }
+        }
+        activeEmbeddedView = null
+        embeddedViewResizeHandler = null
+        embeddedViewWindow = null
+        activePlugin = null
         return { success: true }
       } catch (err) {
         return { success: false, error: (err as Error).message }
@@ -727,6 +1025,147 @@ const bootstrapPranaMain = async (): Promise<void> => {
     console.info('[Chakra] Registered app install IPC handlers')
   } catch (error) {
     console.warn('[Chakra] Could not register app install IPC handlers:', error)
+  }
+
+  // ── Plugin IPC gateway ────────────────────────────────────────────────────────
+  // Routes plugin renderer IPC calls through Prana's sandboxIpcGateway.
+  // The gateway enforces capability checks (sqlite.read/write, notifications.emit)
+  // before invoking the registered production handler.
+  // API surface matches pluginRuntimeClient so plugin code is portable between
+  // development sandbox (fork) and production (WebContentsView).
+  try {
+    const { ipcMain } = await import('electron')
+    const { createSandboxIpcGateway } = await import('prana/main/features/sandbox/sandboxIpcGateway')
+    const { getDb } = await import('./db/init')
+
+    const chakraGateway = createSandboxIpcGateway()
+
+    const isValidName = (t: string): boolean => /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(t)
+
+    // sqlite:read — table-based SELECT, requires sqlite.read
+    chakraGateway.registerRoute('sqlite:read', async (payload) => {
+      const { table, query } = payload as { table: string; query?: Record<string, unknown> }
+      if (!isValidName(table)) return []
+      const db = getDb()
+      try {
+        if (query && Object.keys(query).length > 0) {
+          const conditions = Object.entries(query)
+          const sql = `SELECT * FROM ${table} WHERE ${conditions.map(([k]) => `${k} = ?`).join(' AND ')}`
+          const params = conditions.map(([, v]) => (typeof v === 'object' ? JSON.stringify(v) : String(v)))
+          return db.prepare(sql).all(...params)
+        }
+        return db.prepare(`SELECT * FROM ${table}`).all()
+      } catch {
+        return []
+      }
+    })
+
+    // sqlite:write — table-based INSERT OR REPLACE, requires sqlite.write
+    chakraGateway.registerRoute('sqlite:write', async (payload) => {
+      const { table, rows } = payload as { table: string; rows: Record<string, unknown>[] }
+      if (!isValidName(table) || !Array.isArray(rows) || rows.length === 0) return { written: 0 }
+      const cols = Object.keys(rows[0]).filter(isValidName)
+      if (cols.length === 0) return { written: 0 }
+      const db = getDb()
+      try {
+        db.exec(`CREATE TABLE IF NOT EXISTS ${table} (${cols.map(c => `${c} TEXT`).join(', ')})`)
+      } catch { /* table already exists */ }
+      const upsert = db.prepare(
+        `INSERT OR REPLACE INTO ${table} (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`
+      )
+      const writeAll = db.transaction((data: Record<string, unknown>[]) => {
+        for (const row of data) {
+          upsert.run(cols.map(c => row[c] === null || row[c] === undefined ? null : typeof row[c] === 'object' ? JSON.stringify(row[c]) : String(row[c])))
+        }
+        return data.length
+      })
+      return { written: writeAll(rows) as number }
+    })
+
+    // notifications:emit — emit to Prana notification centre, requires notifications.emit
+    chakraGateway.registerRoute('notifications:emit', async (payload) => {
+      const { eventType, payload: evtPayload } = payload as { eventType: string; payload: Record<string, unknown> }
+      try {
+        const { notificationCentreService } = await import('prana/main/features/communication/notificationCentreService')
+        await notificationCentreService.emit({
+          eventType,
+          priority: 'INFO',
+          source: 'sandbox:plugin',
+          message: eventType,
+          payload: evtPayload ?? {},
+        })
+      } catch { /* notification centre may be unavailable — non-fatal */ }
+    })
+
+    const assertPluginCaller = (senderId: number): ActivePluginSession => {
+      if (!activePlugin) throw new Error('No plugin container is running')
+      if (activePlugin.webContentsId !== senderId) throw new Error('IPC sender is not the active plugin container')
+      return activePlugin
+    }
+
+    // plugin:sqlite:read — maps to gateway route 'sqlite:read'
+    ipcMain.handle('plugin:sqlite:read', async (event, payload: { table: string; query?: Record<string, unknown> }) => {
+      try {
+        const session = assertPluginCaller(event.sender.id)
+        const msg = chakraGateway.buildMessage('sqlite:read', session.sandboxSessionId || session.runtimeId, session.runtimeId, payload)
+        return chakraGateway.route(msg, session.capabilities)
+      } catch (err) {
+        return { ok: false, error: (err as Error).message }
+      }
+    })
+
+    // plugin:sqlite:write — maps to gateway route 'sqlite:write'
+    ipcMain.handle('plugin:sqlite:write', async (event, payload: { table: string; rows: Record<string, unknown>[] }) => {
+      try {
+        const session = assertPluginCaller(event.sender.id)
+        const msg = chakraGateway.buildMessage('sqlite:write', session.sandboxSessionId || session.runtimeId, session.runtimeId, payload)
+        return chakraGateway.route(msg, session.capabilities)
+      } catch (err) {
+        return { ok: false, error: (err as Error).message }
+      }
+    })
+
+    // plugin:sqlite:exec — raw SQL execution; requires sqlite.write capability.
+    // Not routed through the gateway (exec is not in the capability operation map)
+    // but guarded by the same capability check before execution.
+    ipcMain.handle('plugin:sqlite:exec', async (event, payload: { sql: string }) => {
+      try {
+        const session = assertPluginCaller(event.sender.id)
+        if (!session.capabilities.sqlite?.write) {
+          return { ok: false, error: "Capability 'sqlite.write' required for exec" }
+        }
+        const db = getDb()
+        db.exec(payload.sql)
+        return { ok: true }
+      } catch (err) {
+        return { ok: false, error: (err as Error).message }
+      }
+    })
+
+    // plugin:notifications:emit — maps to gateway route 'notifications:emit'
+    ipcMain.handle('plugin:notifications:emit', async (event, payload: { eventType: string; payload: Record<string, unknown> }) => {
+      try {
+        const session = assertPluginCaller(event.sender.id)
+        const msg = chakraGateway.buildMessage('notifications:emit', session.sandboxSessionId || session.runtimeId, session.runtimeId, payload)
+        return chakraGateway.route(msg, session.capabilities)
+      } catch (err) {
+        return { ok: false, error: (err as Error).message }
+      }
+    })
+
+    // plugin:runtime:info — returns session metadata to the plugin
+    ipcMain.handle('plugin:runtime:info', async (event) => {
+      try {
+        const session = assertPluginCaller(event.sender.id)
+        return { ok: true, runtimeId: session.runtimeId, sessionId: session.sandboxSessionId, capabilities: session.capabilities }
+      } catch (err) {
+        return { ok: false, error: (err as Error).message }
+      }
+    })
+
+    console.info('[Chakra] Registered plugin IPC gateway handlers (sandboxIpcGateway)')
+  } catch (error) {
+    console.warn('[Chakra] Could not register plugin IPC gateway:', error)
   }
 
   // Ensure SQLite runtime config snapshot exists.
@@ -747,9 +1186,92 @@ const bootstrapPranaMain = async (): Promise<void> => {
         console.info('[Chakra] Seeded SQLite config store with current runtime config if empty')
       }
     }
-  } catch (error) {
-    console.warn('[Chakra] Could not seed SQLite config store:', error)
+  } catch (error: any) {
+    if (error?.code === 'SQLITE_NOTADB') {
+      try {
+        await recoverCorruptPranaDb()
+        console.info('[Chakra] SQLite config seeded after corrupt DB recovery')
+      } catch (retryErr) {
+        console.warn('[Chakra] SQLite recovery retry failed:', retryErr)
+      }
+    } else {
+      console.warn('[Chakra] Could not seed SQLite config store:', error)
+    }
   }
+
+  // ── Sandbox runtime engine init ───────────────────────────────────────────────
+  // Initialise the Prana sandbox engine BEFORE the main window opens so the engine
+  // is in 'operational' state when the renderer triggers chakra:launch-webview.
+  // suppressHostBoot = true: the Startup Orchestrator runs later via app:bootstrap-host
+  // (the splash-screen flow); we must not run it twice.
+  // db = getDb(): projects vault file index into vault_files / vault_staging tables in
+  // Chakra's SQLite cache; silently skipped when vault credentials are not yet configured.
+  try {
+    const { sandboxRuntimeEngine } = await import('prana/main/features/sandbox/sandboxRuntimeEngine')
+    const { initDb, getDb } = await import('./db/init')
+    initDb() // ensure Chakra's cache DB is open before passing it to the engine
+    await sandboxRuntimeEngine.initialize({ suppressHostBoot: true, db: getDb() })
+    console.info('[Chakra] Sandbox runtime engine operational')
+  } catch (error) {
+    // If already initialised (e.g. renderer called sandbox:initialize first) the engine
+    // throws "cannot initialize: already <state>". That is fine — we just verify state.
+    try {
+      const { sandboxRuntimeEngine } = await import('prana/main/features/sandbox/sandboxRuntimeEngine')
+      if (sandboxRuntimeEngine.getEngineState() === 'operational') {
+        console.info('[Chakra] Sandbox runtime engine already operational')
+      } else {
+        console.warn('[Chakra] Sandbox engine init failed, engine state:', sandboxRuntimeEngine.getEngineState(), error)
+      }
+    } catch {
+      console.warn('[Chakra] Could not initialise sandbox runtime engine:', error)
+    }
+  }
+
+  // ── Plugin IPC bridges (app-specific host handlers) ──────────────────────────
+  // Register IPC surface layers for installed plugins that expect host-side channels.
+  // Each bridge is only registered when the corresponding app is installed,
+  // so startup overhead and log noise are proportional to what is actually present.
+  try {
+    const { ipcMain } = await import('electron')
+    const { getDb } = await import('./db/init')
+    const { installedApps: installedAppsTable } = await import('./db/schema')
+    const db = getDb()
+    const allInstalled = db.select().from(installedAppsTable).all()
+    if (allInstalled.some((r: { appId: string }) => r.appId === 'mula')) {
+      const { registerMulaBridge } = await import('./services/mulaPluginBridgeService')
+      await registerMulaBridge(ipcMain)
+    }
+  } catch (error) {
+    console.warn('[Chakra] Could not register plugin IPC bridges:', error)
+  }
+
+  // Flush vault sync and tear down all containers on quit.
+  app.on('before-quit', () => {
+    import('prana/main/features/sandbox/sandboxRuntimeEngine').then(({ sandboxRuntimeEngine }) => {
+      sandboxRuntimeEngine.shutdown().catch(() => { /* ignore errors on quit */ })
+    }).catch(() => { /* ignore import errors on quit */ })
+  })
+
+  // Create the main application window
+  await app.whenReady()
+
+  const mainWindow = new BrowserWindow({
+    width: 1280,
+    height: 800,
+    autoHideMenuBar: true,
+    webPreferences: {
+      sandbox: false,
+      contextIsolation: true,
+      preload: join(__dirname, 'preload', 'index.js')
+    }
+  })
+
+  const baseUrl = resolveRendererUrl(process.env) || 'http://localhost:5173'
+  mainWindow.loadURL(baseUrl)
+
+  app.on('window-all-closed', () => {
+    app.quit()
+  })
 
 }
 
