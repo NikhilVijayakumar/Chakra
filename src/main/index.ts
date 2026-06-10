@@ -879,10 +879,10 @@ const bootstrapPranaMain = async (): Promise<void> => {
             (c: { type: string; state: string }) => c.type === 'module' && c.state === 'RUNNING'
           )
           if (stuckModule) {
-            // Use known sessionId if available; otherwise pass a sentinel —
-            // stopModuleContainer resolves the container by containerId, not sessionId,
-            // so the sentinel is safely ignored by the session manager.
-            const sid = activePlugin?.sandboxSessionId ?? 'orphaned'
+            // stopModuleContainer resolves the container via getActiveModuleContainer(),
+            // not by sessionId. Pass the known sessionId when available so the session
+            // manager can clean up properly; fall back to a sentinel for orphaned containers.
+            const sid = activePlugin?.sandboxSessionId || 'orphaned'
             await sandboxRuntimeEngine.stopModuleContainer(sid)
             console.warn('[Chakra] Force-stopped orphaned module container before launch')
           }
@@ -928,6 +928,12 @@ const bootstrapPranaMain = async (): Promise<void> => {
 
         const [w, h] = win.getContentSize()
         view.setBounds({ x: 0, y: EMBEDDED_TOP_BAR_H, width: w, height: h - EMBEDDED_TOP_BAR_H })
+
+        // Track the view before loadFile so that any concurrent launch call's
+        // "enforce one plugin at a time" block can find and clean it up.
+        activeEmbeddedView = view
+        embeddedViewWindow = win
+
         win.contentView.addChildView(view)
         await view.webContents.loadFile(entryPoint)
 
@@ -936,6 +942,8 @@ const bootstrapPranaMain = async (): Promise<void> => {
         // leaving an orphaned WebContentsView with no way to remove it.
         if (activeLaunchCancelled) {
           activeLaunchCancelled = false
+          activeEmbeddedView = null
+          embeddedViewWindow = null
           try { win.contentView.removeChildView(view) } catch { /* ignore */ }
           try { view.webContents.close() } catch { /* ignore */ }
           if (sandboxSessionId) {
@@ -947,8 +955,7 @@ const bootstrapPranaMain = async (): Promise<void> => {
           return { success: false, error: 'Launch cancelled by exit request' }
         }
 
-        activeEmbeddedView = view
-        embeddedViewWindow = win
+        // activeEmbeddedView and embeddedViewWindow already set above.
         activePlugin = {
           appId: payload.appId,
           runtimeId,
@@ -988,7 +995,14 @@ const bootstrapPranaMain = async (): Promise<void> => {
         console.info(`[Chakra] Plugin container started: ${runtimeId} (${payload.appId}) session=${sandboxSessionId || 'none'} → ${entryPoint}`)
         return { success: true, runtimeId, capabilities, sandboxSessionId }
       } catch (err) {
-        return { success: false, error: (err as Error).message }
+        // If exitWebview cancelled this launch (e.g. React StrictMode cleanup),
+        // return a recognisable sentinel so the renderer can ignore it and let
+        // the subsequent mount re-launch cleanly.
+        if (activeLaunchCancelled) {
+          activeLaunchCancelled = false
+          return { success: false as const, error: 'Launch cancelled by exit request' }
+        }
+        return { success: false as const, error: (err as Error).message }
       }
     })
 
@@ -1235,9 +1249,17 @@ const bootstrapPranaMain = async (): Promise<void> => {
     const { ipcMain } = await import('electron')
     const { getDb } = await import('./db/init')
     const { installedApps: installedAppsTable } = await import('./db/schema')
+    const { readRuntimeManifest } = await import('./services/appInstallService')
     const db = getDb()
     const allInstalled = db.select().from(installedAppsTable).all()
-    if (allInstalled.some((r: { appId: string }) => r.appId === 'mula')) {
+    const hasMula = allInstalled.some((r: { appId: string; installPath: string | null }) => {
+      if (!r.installPath) return false
+      try {
+        const manifest = readRuntimeManifest(r.installPath)
+        return manifest?.runtime?.id === 'plugin.mula'
+      } catch { return false }
+    })
+    if (hasMula) {
       const { registerMulaBridge } = await import('./services/mulaPluginBridgeService')
       await registerMulaBridge(ipcMain)
     }

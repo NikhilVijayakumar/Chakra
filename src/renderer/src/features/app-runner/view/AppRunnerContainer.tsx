@@ -1,4 +1,4 @@
-import { FC, useEffect, useState } from 'react'
+import { FC, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Box, Typography, CircularProgress } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
@@ -23,16 +23,28 @@ export const AppRunnerContainer: FC = () => {
   const [status, setStatus] = useState<'loading' | 'running' | 'error'>('loading')
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
+  // Prevents double-launch from React StrictMode's mount→cleanup→remount cycle.
+  const launchCalledRef = useRef(false)
+  // Mirrors status in a ref so the cleanup closure can read the current value.
+  const statusRef = useRef<'loading' | 'running' | 'error'>('loading')
+  statusRef.current = status
+
   useEffect(() => {
     if (!appId) {
       navigate('/home', { replace: true })
       return
     }
 
-    // Ask main to mount the WebContentsView over this window
+    // Already launched on this component instance — StrictMode second invocation.
+    if (launchCalledRef.current) return
+    launchCalledRef.current = true
+
     window.api.apps.launchWebview(appId).then((result) => {
       if (result.success) {
         setStatus('running')
+      } else if (result.error === 'Launch cancelled by exit request') {
+        // StrictMode cleanup called exitWebview while loadFile was in flight.
+        // Stay in 'loading' — the launch never actually started from the user's perspective.
       } else {
         setStatus('error')
         setErrorMsg(result.error ?? 'Failed to launch app')
@@ -42,8 +54,6 @@ export const AppRunnerContainer: FC = () => {
       setErrorMsg(err instanceof Error ? err.message : 'Launch failed')
     })
 
-    // If the plugin renderer crashes, main process sends this event.
-    // Clean up and navigate home so the host app stays usable.
     const unsubCrash = window.api.apps.onPluginCrashed(({ reason }) => {
       console.warn('[AppRunner] Plugin crashed:', reason, '— navigating home')
       setStatus('error')
@@ -51,17 +61,18 @@ export const AppRunnerContainer: FC = () => {
       setTimeout(() => navigate('/home'), 2000)
     })
 
-    // On unmount, clean up the embedded view
     return () => {
       unsubCrash()
-      window.api.apps.exitWebview().catch(() => { /* ignore */ })
+      // Only call exitWebview when the app is actually running.
+      // If status is still 'loading', this is a StrictMode cleanup — skipping
+      // exitWebview lets the in-progress launch complete without cancellation.
+      if (statusRef.current === 'running') {
+        window.api.apps.exitWebview().catch(() => { /* ignore */ })
+      }
     }
   }, [appId, navigate])
 
   const handleExit = () => {
-    // Navigate immediately — don't wait for IPC. The cleanup in useEffect
-    // will call exitWebview when this component unmounts, which removes the
-    // embedded view. Firing it here too so the view is gone before home renders.
     window.api.apps.exitWebview().catch(() => {})
     navigate('/home')
   }
