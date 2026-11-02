@@ -1,0 +1,17 @@
+schema: spec-driven
+context: |
+  Chakra is an Electron and React desktop host that installs and manages
+  applications from git repositories into an encrypted virtual drive. It builds
+  on Prana (virtual drive, services, runtime) and Astra (design system, UI,
+  MVVM and state patterns). Consult the OKF bundle in knowledge/ before
+  specifying behavior. Keep durable knowledge independent of change artifacts.
+  Define integrations before implementing them.
+rules:
+  proposal:
+    - State scope, motivation, dependencies, and open questions.
+  specs:
+    - Specify observable behavior with scenarios.
+  design:
+    - Describe process boundaries and integration contracts.
+  tasks:
+    - Include implementation and verification tasks.
