@@ -7,3 +7,9 @@ Rules:
 - Before answering architecture or codebase questions, read graphify-out/GRAPH_REPORT.md for god nodes and community structure
 - If graphify-out/wiki/index.md exists, navigate it instead of reading raw files
 - After modifying code files in this session, run `graphify update .` to keep the graph current (AST-only, no API cost)
+
+## OpenSpec and OKF
+
+- Durable knowledge is an OKF v0.2 bundle in `knowledge/`; follow [knowledge-first](skills/shared/knowledge-first/SKILL.md) before writing any proposal, spec, design or task.
+- Behavior changes go through OpenSpec (`openspec/`): propose, apply, archive via the `openspec-*` skills in `skills/shared/`.
+- Skills live in `skills/<category>/`; run `python3 scripts/sync_skills.py` to link them into agent dirs and `--verify` to check.
