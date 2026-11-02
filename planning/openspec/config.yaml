@@ -1,0 +1,25 @@
+schema: fullstack
+context: |
+  Chakra is an Electron desktop host (frontend/) that installs and manages
+  applications from git repositories into an encrypted virtual drive. A Python
+  backend (backend/) will provide services behind a defined API. The frontend
+  builds on Prana (virtual drive, services, runtime) and Astra (design system,
+  MVVM and state). Select the backend, frontend, or fullstack schema explicitly
+  for each change. Before requirements, proposals, specs, contracts and design,
+  consult the shared OKF bundle at knowledge/ and each affected component bundle
+  at backend/knowledge/ or frontend/knowledge/ (paths relative to the repository
+  root). Cite relevant concepts in delivery artifacts. Knowledge bundles stand
+  alone and do not refer to requirements, changes, or code.
+rules:
+  proposal:
+    - Explain scope and cite relevant common and affected component knowledge.
+  specs:
+    - Define testable behavior and cite relevant knowledge concepts.
+  api-contract:
+    - Define interfaces, data, errors and trust boundaries.
+  design:
+    - Describe boundaries and reference relevant knowledge and decisions.
+  adr:
+    - Record durable decisions or state why none is needed.
+  tasks:
+    - Include implementation and verification activities.

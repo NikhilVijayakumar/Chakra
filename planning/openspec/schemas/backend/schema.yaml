@@ -1,0 +1,224 @@
+name: backend
+version: 1
+description: >
+  Intent-driven workflow for Chakra backend (Python) with
+  behavioral specifications, architecture decisions,
+  test-driven implementation, and traceable verification.
+
+# ============================================================
+# ARTIFACT LIFECYCLE
+# ============================================================
+
+artifacts:
+
+  # ----------------------------------------------------------
+  # 1. PROPOSAL
+  # ----------------------------------------------------------
+  - id: proposal
+    generates: proposal.md
+    description: >
+      Defines the problem, intent, scope, constraints,
+      affected areas, dependencies, and expected outcomes.
+    template: proposal.md
+    instruction: |
+      Establish why the change is needed and what outcome is
+      expected before deciding how to implement it.
+
+      Inspect the existing repository and relevant project
+      documentation. Reuse existing conventions and decisions.
+
+      Identify scope, exclusions, dependencies, risks, affected
+      disciplines, and whether architecture or UI/UX is affected.
+
+      Consult the grill-me skill when available and applicable
+      to challenge assumptions before finalizing the proposal.
+      Cite relevant common and backend OKF knowledge.
+
+      Identify the OpenSpec change ID and intended Git branch.
+      Keep the proposal limited to one logical change.
+    requires: []
+
+  # ----------------------------------------------------------
+  # 2. SPECIFICATIONS
+  # ----------------------------------------------------------
+  - id: specs
+    generates: specs/**/*.md
+    description: >
+      Defines observable requirements and behavioral scenarios
+      with traceability to the intended change.
+    template: specs.md
+    instruction: |
+      Define observable, specific, and testable system behavior.
+
+      Use Given/When/Then scenarios where appropriate and consult
+      the gherkin-authoring skill when available.
+
+      Cover positive behavior, negative behavior, validation,
+      boundary conditions, and error handling where applicable.
+
+      Preserve existing behavior unless the approved change
+      explicitly modifies it.
+
+      Reference existing requirements and dependencies.
+      Do not invent undocumented product or backend behavior.
+      Cite relevant OKF concepts from the common bundle (knowledge/) and each
+      affected component bundle (backend/knowledge/, frontend/knowledge/).
+
+      Gherkin scenarios are specifications; they are not
+      automatically executable tests without suitable tooling.
+    requires:
+      - proposal
+
+  # ----------------------------------------------------------
+  # 2b. INTERFACE CONTRACT
+  # ----------------------------------------------------------
+  - id: api-contract
+    generates: api-contract.md
+    description: >
+      Defines operations, data, errors, and trust boundaries of
+      the interface between components, or states that none changes.
+    template: api-contract.md
+    instruction: |
+      Define inputs, outputs, validation, errors, and trust boundaries
+      for each operation. For cross-component work, define and verify
+      both sides of the interface (Electron IPC to Python backend).
+    requires:
+      - specs
+
+  # ----------------------------------------------------------
+  # 3. DESIGN
+  # ----------------------------------------------------------
+  - id: design
+    generates: design.md
+    description: >
+      Defines the technical approach, affected components,
+      interfaces, data flows, and important trade-offs.
+    template: design.md
+    instruction: |
+      Describe how the approved requirements will be implemented.
+
+      Identify component responsibilities, boundaries, interfaces,
+      contracts, data flows, dependencies, and failure handling.
+
+      Consider security, performance, scalability, and
+      maintainability in proportion to the change.
+
+      Reuse existing architecture and document reasons for
+      introducing new patterns or technologies.
+
+      Consult the architecture-review, grill-me, and ponytail skills when
+      available and applicable.
+      Use the c4-diagrams skill when diagrams materially clarify architecture.
+
+      Identify significant architectural decisions that require
+      a durable ADR. Avoid unnecessary design complexity for
+      small, local changes.
+    requires:
+      - proposal
+      - api-contract
+
+  # ----------------------------------------------------------
+  # 4. ARCHITECTURE DECISION RECORD
+  # ----------------------------------------------------------
+  - id: adr
+    generates: adr.md
+    description: >
+      Records significant architectural decisions or explicitly
+      documents why no new ADR is required for this change.
+    template: adr.md
+    instruction: |
+      Review the proposed design and determine whether a new
+      durable architectural decision is required.
+
+      When a decision is required, document its context,
+      decision, alternatives, rationale, trade-offs, and
+      consequences using the project's ADR conventions.
+
+      When an existing ADR already covers the decision, reference
+      it rather than creating a duplicate.
+
+      When no new architectural decision is needed, explicitly
+      state that no new ADR is required and explain briefly why.
+
+      Consult the architectural-decision-records skill when
+      available. Store durable decisions according to the
+      consuming project's knowledge and documentation policy.
+    requires:
+      - design
+
+  # ----------------------------------------------------------
+  # 5. TASKS
+  # ----------------------------------------------------------
+  - id: tasks
+    generates: tasks.md
+    description: >
+      Defines ordered, traceable implementation and verification
+      tasks organized into small, testable vertical slices.
+    template: tasks.md
+    instruction: |
+      Create an actionable checklist based on the approved
+      specifications, design, and architectural decisions.
+
+      Break work into small, reviewable vertical slices.
+      Map tasks to requirements and acceptance scenarios where
+      practical.
+
+      Include implementation, testing, verification, and
+      necessary documentation or migration work.
+
+      Follow the test-driven-development skill when available.
+      Plan Red-Green-Refactor cycles for applicable code changes.
+
+      Use the acceptance-test-authoring skill to turn specifications into
+      verifiable acceptance checks.
+
+      Identify relevant unit, integration, contract, acceptance,
+      UI, mobile, or other tests according to project needs.
+
+      Include applicable quality checks and explicit completion
+      criteria. Keep all tasks within the approved scope.
+
+      Do not mark work complete before it has been performed
+      and its result verified.
+    requires:
+      - specs
+      - design
+      - adr
+
+# ============================================================
+# IMPLEMENTATION GATE
+# ============================================================
+
+apply:
+  requires:
+    - tasks
+  tracks: tasks.md
+  instruction: |
+    Implement only the approved OpenSpec change.
+
+    Before modifying code:
+    - Follow the openspec-git-discipline skill.
+    - Confirm the correct feature or fix branch.
+    - Review the approved proposal, specifications, design,
+      ADR decision, and tasks.
+    - Inspect the relevant project conventions and skills.
+    - Confirm the required implementation tasks are actionable.
+
+    During implementation:
+    - Follow the project's technology-specific conventions.
+    - Use Red-Green-Refactor for applicable code changes.
+    - Implement one testable vertical slice at a time.
+    - Run relevant tests and quality checks.
+    - Do not weaken requirements or tests merely to make
+      implementation pass.
+    - Keep task checkboxes synchronized with actual progress.
+    - Do not introduce unrelated changes or bypass Git safeguards.
+
+    Before considering implementation complete:
+    - Verify the implementation against the approved requirements.
+    - Use the code-reviewer skill to review the change.
+    - Report tests and checks actually executed.
+    - Identify failures, skipped checks, unavailable tooling,
+      and unresolved verification gaps.
+    - Do not claim successful verification without evidence.
+

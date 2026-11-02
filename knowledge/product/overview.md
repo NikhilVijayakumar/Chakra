@@ -1,8 +1,9 @@
 ---
-type: Concept
+type: Product
 title: Chakra product
 description: Purpose and boundaries of the Chakra app installer.
 status: draft
+generated: { by: claude-code/sonnet-5.5, at: 2026-11-02T00:00:00Z }
 tags: [product, electron]
 ---
 

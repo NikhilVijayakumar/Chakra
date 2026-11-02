@@ -1,0 +1,7 @@
+store: chakra-planning
+schema: backend
+context: |
+  Component pointer to the shared store; the store owns schemas, specs and
+  changes. Select the backend schema explicitly. Consult knowledge/ and
+  backend/knowledge/ before specifying behavior. Run OpenSpec from backend/;
+  shared skills live in ../skills/.
