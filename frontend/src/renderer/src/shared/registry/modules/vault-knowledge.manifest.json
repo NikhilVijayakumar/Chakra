@@ -1,7 +1,0 @@
-{
-  "id": "vault-knowledge",
-  "title": "Vault Knowledge",
-  "route": "/vault-knowledge",
-  "enabled": true,
-  "ownership": "renderer-module"
-}

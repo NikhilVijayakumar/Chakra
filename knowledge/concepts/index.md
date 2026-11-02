@@ -1,0 +1,1 @@
+- [Library and CLI split](library-and-cli-split.md) - UI library vs CLI responsibilities and the cache rules.

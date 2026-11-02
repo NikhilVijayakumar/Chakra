@@ -1,0 +1,38 @@
+{
+  "provisional": true,
+  "note": "Sheet layout is provisional (ported from the previous app). Replace once the final sheets are defined; code reads only this file.",
+  "auth": {
+    "content": "employees",
+    "id": "id",
+    "name": "name",
+    "email": "email",
+    "password_hash": "password_hash",
+    "role": "role",
+    "status": "status",
+    "active_value": "active"
+  },
+  "apps": {
+    "app_content": "apps",
+    "app_id": "id",
+    "app_status": "status",
+    "feature_content": "app_features",
+    "feature_app_id": "app_id",
+    "feature_name": "feature",
+    "feature_status": "status",
+    "active_value": "active"
+  },
+  "contents": [
+    {"id": "employees", "tab": "Employee", "key": ["id"], "push": ["password_hash"],
+     "columns": ["id", "name", "email", "password_hash", "role", "department_id", "designation_id", "status"]},
+    {"id": "departments", "tab": "Department", "key": ["id"], "feature": "departments", "columns": ["id", "name", "status"]},
+    {"id": "designations", "tab": "Designation", "key": ["id"], "feature": "designations", "columns": ["id", "name", "status"]},
+    {"id": "teams", "tab": "Team", "key": ["id"], "feature": "teams", "columns": ["id", "name", "status"]},
+    {"id": "employee_teams", "tab": "EmployeeTeam", "key": ["employee_id", "team_id"], "feature": "teams", "columns": ["employee_id", "team_id", "status"]},
+    {"id": "apps", "tab": "App", "key": ["id"], "columns": ["id", "name", "status"]},
+    {"id": "app_features", "tab": "AppFeature", "key": ["app_id", "feature"], "columns": ["app_id", "feature", "status"]},
+    {"id": "attendance_keys", "tab": "AttendanceKey", "key": ["id"], "feature": "attendance", "columns": ["id", "short_key", "full_description"]},
+    {"id": "holidays", "tab": "Holiday", "key": ["id"], "feature": "holidays", "columns": ["id", "date", "holiday_name"]},
+    {"id": "leaves", "tab": "Leave", "key": ["id"], "feature": "leaves", "columns": ["id", "leave_type", "count", "carry_forward", "max_forward"]},
+    {"id": "config", "tab": "Config", "key": ["key"], "columns": ["id", "key", "value", "status"]}
+  ]
+}

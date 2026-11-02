@@ -1,7 +1,0 @@
-{
-  "id": "splash",
-  "title": "Splash",
-  "route": "/splash",
-  "enabled": true,
-  "ownership": "renderer-module"
-}

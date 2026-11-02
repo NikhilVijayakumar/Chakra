@@ -539,3 +539,8 @@ __marimo__/
 /docs/sheets/MasterSheets - Team.csv
 /.planning/phases/11-sync-architecture-and-loading-states/11-01-PLAN.md
 /frontend/data/prana/caches/chakra-cache.sqlite
+
+# Chakra UI / CLI build output
+/frontend/dist-lib/
+/backend/dist/
+/backend/build/

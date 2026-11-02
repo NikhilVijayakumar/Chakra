@@ -1,9 +1,0 @@
-{
-  "uid": "sla-breach-count",
-  "name": "SLA Breach Count",
-  "description": "Counts service-level failures across critical workflows in the reporting window.",
-  "unit": "count",
-  "target": "",
-  "value": "",
-  "goalMapping": "Monitors whether operating commitments are being met consistently."
-}

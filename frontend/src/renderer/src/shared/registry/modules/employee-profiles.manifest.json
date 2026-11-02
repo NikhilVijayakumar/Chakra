@@ -1,7 +1,0 @@
-{
-  "id": "employee-profiles",
-  "title": "Employee Profiles",
-  "route": "/profile/:id",
-  "enabled": true,
-  "ownership": "renderer-module"
-}

@@ -1,7 +1,0 @@
-{
-  "id": "funding-digest",
-  "title": "Funding Digest",
-  "route": "/funding-digest",
-  "enabled": true,
-  "ownership": "renderer-module"
-}

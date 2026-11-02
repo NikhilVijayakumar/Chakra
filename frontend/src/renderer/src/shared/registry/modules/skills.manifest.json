@@ -1,7 +1,0 @@
-{
-  "id": "skills",
-  "title": "Skills",
-  "route": "/skills",
-  "enabled": true,
-  "ownership": "renderer-module"
-}
