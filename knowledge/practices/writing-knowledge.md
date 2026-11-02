@@ -40,5 +40,4 @@ checks that the replacement exists, not that the text is unchanged.
 
 # Related
 
-- [Evidence and Provenance](/concepts/evidence-and-provenance.md)
 - [Open Knowledge Format (OKF)](/technologies/okf.md)

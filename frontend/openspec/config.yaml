@@ -1,0 +1,7 @@
+store: chakra-planning
+schema: frontend
+context: |
+  Component pointer to the shared store; the store owns schemas, specs and
+  changes. Select the frontend schema explicitly. Consult knowledge/ and
+  frontend/knowledge/ before specifying behavior. Run OpenSpec from frontend/;
+  shared skills live in ../skills/.

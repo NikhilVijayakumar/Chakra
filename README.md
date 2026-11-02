@@ -118,7 +118,7 @@ When the virtual drive is mounted, Chakra organizes data as:
 ```bash
 # Clone the repository
 git clone https://github.com/NikhilVijayakumar/chakra.git
-cd chakra
+cd chakra/frontend
 
 # Install dependencies
 npm install
