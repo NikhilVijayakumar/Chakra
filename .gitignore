@@ -545,3 +545,8 @@ __marimo__/
 /backend/dist/
 /backend/build/
 /data/schema/
+/node_modules/
+/package-lock.json
+/tsconfig.node.tsbuildinfo
+/config/chakra-494418-bddcc85e4c64.json
+/config/chakra-runtime.json
