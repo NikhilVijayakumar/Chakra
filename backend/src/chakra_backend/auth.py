@@ -51,7 +51,7 @@ def login(ctx, req: dict) -> dict:
     # same error for unknown email, inactive account and bad password
     if not emp or not _active(ctx, emp) or not _check(password, emp[a["password_hash"]]):
         raise ChakraError("invalid_credentials", "invalid email or password")
-    return {"user": {"id": emp[a["id"]], "email": emp[a["email"]], "name": emp[a["name"]], "role": emp.get(a["role"]) or None}}
+    return {"user": {"id": emp[a["id"]], "email": emp[a["email"]], "name": emp[a["name"]], "role": emp.get(a.get("role", "")) or None}}
 
 
 def validate_email(ctx, req: dict) -> dict:

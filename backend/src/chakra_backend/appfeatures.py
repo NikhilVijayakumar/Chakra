@@ -23,8 +23,11 @@ def info(ctx, req: dict) -> dict:
                 if r[c["app_id"]] == app_id and r[c["app_status"]].lower() == active), None)
     if not app:
         raise ChakraError("app_not_enabled", f"app '{app_id}' is not enabled")
-    feats = sorted({r[c["feature_name"]] for r in dbm.effective_rows(ctx.db, ctx.registry.get(c["feature_content"]))
-                    if r[c["feature_app_id"]] == app_id and r[c["feature_status"]].lower() == active})
+    if "feature_content" in c:
+        feats = sorted({r[c["feature_name"]] for r in dbm.effective_rows(ctx.db, ctx.registry.get(c["feature_content"]))
+                        if r[c["feature_app_id"]] == app_id and r[c["feature_status"]].lower() == active})
+    else:  # ponytail: no per-app feature sheet yet (deferred), so an enabled app gets every feature-tagged content
+        feats = sorted({x.feature for x in ctx.registry.contents.values() if x.feature})
     return {"appId": app_id, "enabled": True, "features": feats}
 
 

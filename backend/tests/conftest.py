@@ -17,13 +17,12 @@ def hp(p):
 class FakeSheets:
     def __init__(self):
         self.tabs = {
-            "Employee": [["ID", "Name", "Email", "Password_Hash", "Role", "Department_ID", "Designation_ID", "Status"],
-                         ["e1", "Asha", "Asha@x.com", hp("secret"), "admin", "d1", "g1", "active"],
-                         ["e2", "Old", "old@x.com", hp("pw"), "user", "d1", "g1", "inactive"]],
+            "Employee": [["ID", "Name", "Email", "Password_Hash", "Department_ID", "Designation_ID", "Status"],
+                         ["e1", "Asha", "Asha@x.com", hp("secret"), "d1", "g1", "active"],
+                         ["e2", "Old", "old@x.com", hp("pw"), "d1", "g1", "inactive"]],
             "App": [["ID", "Name", "Status"], ["app1", "App One", "active"], ["app2", "App Two", "disabled"]],
-            "AppFeature": [["App_ID", "Feature", "Status"], ["app1", "holidays", "active"], ["app1", "teams", "inactive"]],
             "Holiday": [["ID", "Date", "Holiday_Name"], ["h1", "2026-01-01", "New Year"]],
-            "Leave": [["ID", "Leave_Type", "Count", "Carry_Forward", "Max_Forward"], ["l1", "casual", "12", "1", "5"]],
+            "LeaveType": [["ID", "Leave_Type", "Count", "Carry_Forward", "Max_Forward"], ["l1", "casual", "12", "1", "5"]],
         }
         self.fail: set[str] = set()
         self.writes: list = []

@@ -43,3 +43,16 @@ def test_missing_sheet_column_fails_that_content(env):
     env.sheets.tabs["Holiday"] = [["ID", "Date"], ["h1", "2026"]]
     r = {x["target"]: x for x in env.call("sync", "run")["data"]["results"]}["holidays"]
     assert not r["ok"] and "holiday_name" in r["message"]
+
+
+def test_load_env_resolves_relative_path(tmp_path, monkeypatch):
+    from chakra_backend.settings import load_env
+    (tmp_path / ".env").write_text("CHAKRA_SERVICE_ACCOUNT_PATH=config/k.json\nCHAKRA_SPREADSHEET_ID='abc'\nOTHER=1\n")
+    for k in ("CHAKRA_SERVICE_ACCOUNT_PATH", "CHAKRA_SPREADSHEET_ID", "OTHER"):
+        monkeypatch.delenv(k, raising=False)
+    monkeypatch.chdir(tmp_path)
+    load_env()
+    import os
+    assert os.environ["CHAKRA_SPREADSHEET_ID"] == "abc" and "OTHER" not in os.environ
+    assert os.environ["CHAKRA_SERVICE_ACCOUNT_PATH"].endswith("k.json") and str(tmp_path.resolve()) in os.environ["CHAKRA_SERVICE_ACCOUNT_PATH"]
+    monkeypatch.delenv("CHAKRA_SERVICE_ACCOUNT_PATH"); monkeypatch.delenv("CHAKRA_SPREADSHEET_ID")

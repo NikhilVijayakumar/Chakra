@@ -12,7 +12,7 @@ from .commands import API_VERSION, COMMANDS
 from .errors import ChakraError
 from .mailer import AgentMailer, Mailer
 from .registry import Registry, load
-from .settings import Settings
+from .settings import Settings, load_env
 from .sheets import GoogleSheets, SheetsClient
 
 
@@ -27,6 +27,7 @@ class Context:
 
 
 def default_context() -> Context:
+    load_env()
     s = Settings()
     reg = load()
     return Context(s, reg, dbm.connect(s.home / "chakra.sqlite", reg),
