@@ -1,9 +1,0 @@
-{
-  "uid": "investor-stage-conversion",
-  "name": "Investor Stage Conversion",
-  "description": "Tracks progression rate of investor conversations through funding pipeline stages.",
-  "unit": "%",
-  "target": "",
-  "value": "",
-  "goalMapping": "Evaluates funding narrative effectiveness and capital pipeline health."
-}

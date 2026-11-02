@@ -1,7 +1,0 @@
-{
-  "id": "kpis",
-  "title": "KPIs",
-  "route": "/kpis",
-  "enabled": true,
-  "ownership": "renderer-module"
-}

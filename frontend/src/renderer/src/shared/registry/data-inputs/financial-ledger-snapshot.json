@@ -1,8 +1,0 @@
-{
-  "uid": "financial-ledger-snapshot",
-  "name": "Financial Ledger Snapshot",
-  "description": "Periodic ledger exports including burn categories, reserves, and forecast assumptions.",
-  "schemaType": "tabular",
-  "requiredFields": ["period", "category", "actual_amount", "planned_amount", "variance"],
-  "sampleSource": "finance/ledger"
-}

@@ -7,6 +7,21 @@ name = "chakra-backend"
 version = "0.1.0"
 description = "Python backend service for Chakra"
 requires-python = ">=3.12"
+dependencies = ["bcrypt>=4", "google-api-python-client>=2", "google-auth>=2"]
+
+[project.optional-dependencies]
+email = ["agentmail"]
+dev = ["pytest", "pyinstaller"]
+
+[project.scripts]
+chakra = "chakra_backend.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+chakra_backend = ["contents.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

@@ -1,0 +1,1 @@
+- [Chakra CLI contract](cli-contract.md) - JSON envelope, content registry, sync rules.

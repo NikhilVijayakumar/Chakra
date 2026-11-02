@@ -1,7 +1,0 @@
-{
-  "id": "compliance",
-  "title": "Compliance",
-  "route": "/compliance",
-  "enabled": true,
-  "ownership": "renderer-module"
-}
