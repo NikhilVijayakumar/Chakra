@@ -1,7 +1,7 @@
 # Architecture Decision Record: chakra-shared-library
 
 ## 1. Decision Status
-- **Status:** Proposed
+- **Status:** Accepted (recorded in `backend/knowledge/decisions/cli-process-per-call.md`)
 - **OpenSpec Change ID:** `chakra-shared-library`
 
 ## 2. Decision Checkpoint

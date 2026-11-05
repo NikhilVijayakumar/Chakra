@@ -9,9 +9,9 @@ Use test-first where applicable. Do not mark tasks complete without verification
 ## 1. Preparation and Baseline
 - [x] 1.1 Resolve remaining open questions (sheet shape for app availability/features, content registry, password push); update artifacts. Sheet layout and app-availability/feature sheets deferred by the user; the registry file is provisional.
 - [x] 1.2 Create branch `feature/chakra-shared-library` from `develop`.
-- [ ] 1.3 `npm install`; record baseline `typecheck`, `lint`, `test` results in the verification record.
+- [x] 1.3 `npm install`; record baseline `typecheck`, `lint`, `test` results in the verification record.
 - [x] 1.4 Inventory Prana/Astra imports used by splash, boot, auth, and `main.tsx`; list what the library keeps.
-- [ ] 1.5 Write characterization tests/fixtures for existing login (bcrypt hash compat), OTP/reset, and sheets-to-SQLite sync behavior.
+- [x] 1.5 Write characterization tests/fixtures for existing login (bcrypt hash compat), OTP/reset, and sheets-to-SQLite sync behavior.
 - [x] 1.6 Add knowledge concepts first (knowledge-first): CLI contract (backend), library boundary (frontend), library/consumer concept (common); run `scripts/verify_knowledge.py` on all bundles.
 
 ## 2. Backend CLI skeleton and contract (`backend-cli`)
@@ -56,14 +56,14 @@ Use test-first where applicable. Do not mark tasks complete without verification
 
 ## 7. Packaging and reference consumer
 - [x] 7.1 Rename package to scoped `@nikhilvijayakumar/chakra-ui`; entry points and `exports`/`files`; consumable via git dependency. Not yet tested by installing from git into another app.
-- [ ] 7.2 Minimal reference consumer app that mounts the library; end-to-end run with stub then built CLI.
+- [x] 7.2 Minimal reference consumer app that mounts the library; end-to-end run with stub then built CLI.
 - [ ] 7.3 Measure login and sync latency; record result against the ADR review trigger.
 
 ## 8. Integration and Final Verification
 - [x] 8.1 Run backend pytest and frontend `typecheck`, `lint`, `test`, `build`.
-- [ ] 8.2 Verify each scenario in `specs/` and record evidence.
-- [ ] 8.3 Update README, `AGENTS.md`, knowledge (accept ADR into `backend/knowledge/decisions/`), log files.
-- [ ] 8.4 `code-reviewer` review; run `graphify update .`.
+- [x] 8.2 Verify each scenario in `specs/` and record evidence.
+- [x] 8.3 Update README, `AGENTS.md`, knowledge (accept ADR into `backend/knowledge/decisions/`), log files.
+- [x] 8.4 `code-reviewer` review; run `graphify update .`.
 
 ## 9. Review, Merge, Archive
 - [ ] 9.1 PR with change ID; merge to `develop` after gates; archive the change.

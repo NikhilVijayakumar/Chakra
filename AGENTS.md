@@ -16,4 +16,6 @@ Rules:
 - `skills/` — canonical skills; `python3 scripts/sync_skills.py` links them into agent dirs (`--verify` to check).
 - `docs/` — source material, not approved contracts.
 
+`.env` is per machine (Windows and Linux differ); never hardcode OS paths, set `CHAKRA_HOME` per machine as in `.env.example`.
+
 Frontend runtime files (`config/`, `data/`, `.chakra/`) are relative to `frontend/`.
