@@ -17,4 +17,4 @@ The mapping from sheet tabs to cache tables, which content needs which feature, 
 
 # Sync
 
-A sync first pushes pending local updates, then replaces each content's cache table from its sheet. A failed content keeps its previous rows and is reported as not synced. Sync status is computed from cache metadata and never contacts Google.
+A sync pushes local edits for each content and then pulls its sheet (see [Write path and two-way sync](write-path.md)); rows that fail validation go to [Quarantine](quarantine.md). A failed content keeps its previous rows and is reported as not synced. The contract version is 2. Sync status is computed from cache metadata and never contacts Google.

@@ -21,9 +21,6 @@
       "key": [
         "id"
       ],
-      "push": [
-        "password_hash"
-      ],
       "columns": [
         "id",
         "name",
@@ -32,7 +29,27 @@
         "department_id",
         "designation_id",
         "status"
-      ]
+      ],
+      "writable": true,
+      "id_prefix": "EMP",
+      "required": [
+        "name",
+        "email"
+      ],
+      "relations": [
+        {
+          "column": "department_id",
+          "content": "departments"
+        },
+        {
+          "column": "designation_id",
+          "content": "designations"
+        }
+      ],
+      "hidden": [
+        "password_hash"
+      ],
+      "feature": "employees"
     },
     {
       "id": "departments",
@@ -45,6 +62,11 @@
         "id",
         "name",
         "status"
+      ],
+      "writable": true,
+      "id_prefix": "DEPT",
+      "required": [
+        "name"
       ]
     },
     {
@@ -58,6 +80,11 @@
         "id",
         "name",
         "status"
+      ],
+      "writable": true,
+      "id_prefix": "DES",
+      "required": [
+        "name"
       ]
     },
     {
@@ -71,20 +98,41 @@
         "id",
         "name",
         "status"
+      ],
+      "writable": true,
+      "id_prefix": "TEAM",
+      "required": [
+        "name"
       ]
     },
     {
       "id": "employee_teams",
       "tab": "EmployeeTeam",
       "key": [
-        "employee_id",
-        "team_id"
+        "id"
       ],
       "feature": "teams",
       "columns": [
+        "id",
         "employee_id",
         "team_id",
         "status"
+      ],
+      "writable": true,
+      "id_prefix": "EMT",
+      "required": [
+        "employee_id",
+        "team_id"
+      ],
+      "relations": [
+        {
+          "column": "employee_id",
+          "content": "employees"
+        },
+        {
+          "column": "team_id",
+          "content": "teams"
+        }
       ]
     },
     {
@@ -136,6 +184,11 @@
         "id",
         "short_key",
         "full_description"
+      ],
+      "writable": true,
+      "id_prefix": "ATT",
+      "required": [
+        "short_key"
       ]
     },
     {
@@ -147,6 +200,12 @@
       "feature": "holidays",
       "columns": [
         "id",
+        "date",
+        "holiday_name"
+      ],
+      "writable": true,
+      "id_prefix": "HOL",
+      "required": [
         "date",
         "holiday_name"
       ]
@@ -164,20 +223,36 @@
         "count",
         "carry_forward",
         "max_forward"
+      ],
+      "writable": true,
+      "id_prefix": "LEA",
+      "required": [
+        "leave_type"
+      ],
+      "integers": [
+        "count",
+        "max_forward"
       ]
     },
     {
       "id": "config",
       "tab": "Config",
       "key": [
-        "key"
+        "id"
       ],
       "columns": [
         "id",
         "key",
         "value",
         "status"
-      ]
+      ],
+      "writable": true,
+      "id_prefix": "CFG",
+      "required": [
+        "key",
+        "value"
+      ],
+      "feature": "config"
     }
   ],
   "_note": "Mirrors data/schema/*.csv (BAVANSMasterSheets). Header match ignores case, spaces, underscores."

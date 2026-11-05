@@ -8,6 +8,7 @@ import time
 import bcrypt
 
 from . import db as dbm
+from . import writes
 from .errors import ChakraError
 
 
@@ -103,9 +104,7 @@ def reset_password(ctx, req: dict) -> dict:
         raise ChakraError("unknown_email", "no active account for this email")
     a = ctx.registry.auth
     content = ctx.registry.get(a["content"])
-    if a["password_hash"] not in content.push:
-        raise ChakraError("internal", "password column is not pushable in the registry")
-    dbm.add_pending(ctx.db, content.id, dbm.key_of(content, emp), a["password_hash"], _hash(new))
+    writes.store(ctx, content, {c: emp[c] for c in content.columns} | {a["password_hash"]: _hash(new)})  # dirty: pushed at the next sync
     ctx.db.execute("DELETE FROM otp WHERE email=?", (email_n,))  # token is single-use
     ctx.db.commit()
     return {"updated": True}

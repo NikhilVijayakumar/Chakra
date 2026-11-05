@@ -1,1 +1,3 @@
 - [Chakra CLI contract](cli-contract.md) - JSON envelope, content registry, sync rules.
+- [Write path and two-way sync](write-path.md) - dirty rows, push then pull, durability.
+- [Quarantine](quarantine.md) - rejected and conflicting rows.

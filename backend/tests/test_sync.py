@@ -10,7 +10,7 @@ def test_sync_all_fails_partially_and_reports(env):
     out = env.call("sync", "run")["data"]
     by = {r["target"]: r for r in out["results"]}
     assert by["employees"]["ok"] and by["holidays"]["ok"]
-    assert not by["departments"]["ok"]  # tab missing in fake
+    assert not by["teams"]["ok"]  # tab missing in fake
     assert not env.call("sync", "status")["data"]["synced"]
 
 

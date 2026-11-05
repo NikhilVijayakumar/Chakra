@@ -47,6 +47,10 @@ export const errorMessages: Record<string, string> = {
   cli_unavailable: 'The CLI cannot be started. Check its location.',
   cli_timeout: 'The CLI did not respond in time.',
   cli_incompatible: 'This CLI version is not compatible.',
-  invalid_request: 'Please check the values and try again.'
+  invalid_request: 'Please check the values and try again.',
+  validation_failed: 'Some values are not valid.',
+  not_found: 'That item no longer exists.',
+  content_read_only: 'That content cannot be changed.',
+  quarantine_unknown: 'That quarantine entry no longer exists.'
 }
 export const messageFor = (code: string): string => errorMessages[code] ?? 'Something went wrong. Please try again.'

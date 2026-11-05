@@ -12,7 +12,7 @@ const stub = (name: string, body: string): string => {
   chmodSync(p, 0o755)
   return p
 }
-const ok = (data: string): string => `console.log(JSON.stringify({ok:true,data:${data},apiVersion:1}))`
+const ok = (data: string): string => `console.log(JSON.stringify({ok:true,data:${data},apiVersion:2}))`
 
 describe('runCli', () => {
   it('passes group/command in argv and the payload only on stdin', async () => {
@@ -43,12 +43,12 @@ describe('validateCliPath / verifyCli', () => {
     expect(validateCliPath(dir)).toBeTruthy()
   })
   it('accepts a compatible CLI and reports doctor results', async () => {
-    const p = stub('good', `console.log(JSON.stringify(a[1]==='version'?{ok:true,data:{version:'1.2.3',apiVersion:1}}:{ok:true,data:{checks:[{id:'sqlite',ok:true,message:'x'},{id:'email',ok:false,message:'y'}]}}))`)
+    const p = stub('good', `console.log(JSON.stringify(a[1]==='version'?{ok:true,data:{version:'1.2.3',apiVersion:2}}:{ok:true,data:{checks:[{id:'sqlite',ok:true,message:'x'},{id:'email',ok:false,message:'y'}]}}))`)
     const r = await verifyCli(p)
-    expect(r.ok && r.data).toMatchObject({ version: '1.2.3', apiVersion: 1, healthy: false })
+    expect(r.ok && r.data).toMatchObject({ version: '1.2.3', apiVersion: 2, healthy: false })
   })
   it('rejects an incompatible apiVersion', async () => {
-    const p = stub('old', `console.log(JSON.stringify({ok:true,data:{version:'9',apiVersion:2}}))`)
+    const p = stub('old', `console.log(JSON.stringify({ok:true,data:{version:'0.2.0',apiVersion:1}}))`)
     expect((await verifyCli(p) as any).error.code).toBe('cli_incompatible')
   })
 })

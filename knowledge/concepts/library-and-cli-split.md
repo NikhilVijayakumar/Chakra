@@ -15,5 +15,6 @@ generated: { by: claude-code/sonnet-5.5, at: 2026-11-02T00:00:00Z }
 
 - A consuming app configures only the CLI location, from the UI.
 - Google Sheets is the source of content. SQLite is a disposable cache with no state of record.
-- A local update (for example a password reset) is kept in the cache as pending and pushed at the next sync. It is not recovered if the push never succeeds or the cache is deleted.
+- A local edit (create, update, delete, password reset) is kept in the cache as dirty and pushed at the next sync. It is not recovered if the push never succeeds or the cache is deleted; everything else is rebuilt from the sheet.
+- A consuming app has no database of its own. It reads and writes content only through the library.
 - Each app sees only the features the sheet grants it, and only if the sheet marks the app enabled.

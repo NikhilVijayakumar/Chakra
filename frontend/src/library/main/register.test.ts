@@ -2,13 +2,13 @@ import { chmodSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { IPC } from '../shared/contract'
+import { IPC, LONG_OPS } from '../shared/contract'
 import { registerChakra } from './register'
 
 const setup = () => {
   const dir = mkdtempSync(join(tmpdir(), 'chakra-reg-'))
   const cli = join(dir, 'cli')
-  writeFileSync(cli, `#!/usr/bin/env node\nlet i='';process.stdin.on('data',d=>i+=d);process.stdin.on('end',()=>{const a=process.argv.slice(2);if(a[1]==='version')console.log(JSON.stringify({ok:true,data:{version:'1',apiVersion:1}}));else if(a[1]==='doctor')console.log(JSON.stringify({ok:true,data:{checks:[]}}));else console.log(JSON.stringify({ok:true,data:{argv:a,body:JSON.parse(i||'{}')}}))})\n`)
+  writeFileSync(cli, `#!/usr/bin/env node\nlet i='';process.stdin.on('data',d=>i+=d);process.stdin.on('end',()=>{const a=process.argv.slice(2);if(a[1]==='version')console.log(JSON.stringify({ok:true,data:{version:'1',apiVersion:2}}));else if(a[1]==='doctor')console.log(JSON.stringify({ok:true,data:{checks:[]}}));else console.log(JSON.stringify({ok:true,data:{argv:a,body:JSON.parse(i||'{}')}}))})\n`)
   chmodSync(cli, 0o755)
   const h: Record<string, (e: unknown, ...a: any[]) => any> = {}
   registerChakra({ appId: 'my-app', configDir: dir, ipc: { handle: (c, f) => { h[c] = f } } })
@@ -49,5 +49,30 @@ describe('registerChakra', () => {
     for (const op of ['meta.doctor', 'config.set', '../x', 5]) {
       expect((await h[IPC.call]({}, { op })).error.code).toBe('invalid_request')
     }
+  })
+  it('maps the write and quarantine operations to fixed CLI commands with the main-process appId', async () => {
+    const { h, cli } = setup()
+    await h[IPC.cliSave]({}, cli)
+    const cases: [string, string[]][] = [
+      ['content.create', ['content', 'create']], ['content.update', ['content', 'update']], ['content.delete', ['content', 'delete']],
+      ['quarantine.list', ['quarantine', 'list']], ['quarantine.count', ['quarantine', 'count']], ['quarantine.reject', ['quarantine', 'reject']],
+      ['quarantine.acceptSheets', ['quarantine', 'accept-sheets']], ['quarantine.applyLocal', ['quarantine', 'apply-local']],
+      ['quarantine.fix', ['quarantine', 'fix']], ['quarantine.deleteRecord', ['quarantine', 'delete-record']], ['quarantine.scan', ['quarantine', 'scan']]
+    ]
+    for (const [op, argv] of cases) {
+      const r = await h[IPC.call]({}, { op, payload: { appId: 'admin', content: 'departments', id: 'x' } })
+      expect(r.data.argv).toEqual(argv)
+      expect(r.data.body.appId).toBe('my-app')
+    }
+  })
+  it('keeps passwords out of argv on writes', async () => {
+    const { h, cli } = setup()
+    await h[IPC.cliSave]({}, cli)
+    const r = await h[IPC.call]({}, { op: 'content.create', payload: { content: 'employees', record: { password: 'hunter2' } } })
+    expect(JSON.stringify(r.data.argv)).not.toContain('hunter2')
+    expect(r.data.body.record.password).toBe('hunter2')
+  })
+  it('uses the long timeout only for sync.run and quarantine.scan', () => {
+    expect([...LONG_OPS].sort()).toEqual(['quarantine.scan', 'sync.run'])
   })
 })

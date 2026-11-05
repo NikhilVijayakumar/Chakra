@@ -5,7 +5,7 @@ from chakra_backend.cli import run
 
 def test_version(env):
     out = env.call("meta", "version")
-    assert out["data"]["apiVersion"] == 1 and out["data"]["version"]
+    assert out["data"]["apiVersion"] == 2 and out["data"]["version"]
 
 
 def test_malformed_json_is_invalid_request(env):
@@ -37,3 +37,27 @@ def test_config_secret_never_returned(env):
     out = env.call("config", "get", {"key": "agentmail_api_key"})
     assert out["data"] == {"isSet": True} and "KEY123" not in json.dumps(out)
     assert env.call("config", "get", {"key": "nope"})["error"]["code"] == "invalid_request"
+
+
+def test_status_counts_dirty_rows_and_quarantine(synced):
+    synced.call("content", "create", {"appId": "app1", "content": "departments", "record": {"name": "x"}})
+    synced.sheets.tabs["Department"].append(["d5", "", "active", "100"])
+    synced.call("sync", "run", {"target": "holidays"})
+    s = synced.call("sync", "status")["data"]
+    assert s["pending"] == 1 and s["quarantined"] == 0
+    synced.call("sync", "run", {"target": "departments"})
+    s = synced.call("sync", "status")["data"]
+    assert s["quarantined"] == 1 and {c["id"]: c["dirty"] for c in s["contents"]}["departments"] == 0
+
+
+def test_default_password_secret_is_never_returned(env):
+    env.call("config", "set", {"key": "default_password", "value": "s3cret"})
+    out = env.call("config", "get", {"key": "default_password"})
+    assert out["data"] == {"isSet": True} and "s3cret" not in str(out)
+
+
+def test_write_commands_reject_malformed_requests(synced):
+    for cmd, req in [("create", {"appId": "app1", "content": "departments", "record": "x"}), ("update", {"appId": "app1", "content": "departments"}),
+                     ("delete", {"appId": "app1", "content": 5})]:
+        assert synced.call("content", cmd, req)["error"]["code"] in ("invalid_request", "not_found", "unknown_content")
+    assert synced.call("content", "create", {"content": "departments", "record": {}})["error"]["code"] == "invalid_request"

@@ -13,8 +13,8 @@ const install = (o: { cliPath?: string | null; verify?: Envelope<any>; calls?: R
   const api = {
     cli: {
       get: vi.fn(async () => ({ cliPath: o.cliPath === undefined ? '/bin/chakra' : o.cliPath, version: null, verifiedAt: null })),
-      verify: vi.fn(async () => o.verify ?? ok({ version: '1', apiVersion: 1, checks: [], healthy: true })),
-      status: vi.fn(async () => o.verify ?? ok({ version: '1', apiVersion: 1, checks: [], healthy: true })),
+      verify: vi.fn(async () => o.verify ?? ok({ version: '1', apiVersion: 2, checks: [], healthy: true })),
+      status: vi.fn(async () => o.verify ?? ok({ version: '1', apiVersion: 2, checks: [], healthy: true })),
       save: vi.fn()
     },
     call: vi.fn(async (op: string, p: any) => (calls[op] ? calls[op](p) : err('invalid_request')))
@@ -40,7 +40,7 @@ describe('ChakraGate boot', () => {
   })
 
   it('shows the failing doctor check and never reaches login', async () => {
-    install({ verify: ok({ version: '1', apiVersion: 1, healthy: false, checks: [{ id: 'google_credentials', ok: false, message: 'no key' }] }) })
+    install({ verify: ok({ version: '1', apiVersion: 2, healthy: false, checks: [{ id: 'google_credentials', ok: false, message: 'no key' }] }) })
     gate()
     expect(await screen.findByText(/google_credentials: no key/)).toBeTruthy()
     expect(screen.queryByTestId('login')).toBeNull()
