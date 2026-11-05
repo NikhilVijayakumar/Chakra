@@ -56,3 +56,11 @@ def test_load_env_resolves_relative_path(tmp_path, monkeypatch):
     assert os.environ["CHAKRA_SPREADSHEET_ID"] == "abc" and "OTHER" not in os.environ
     assert os.environ["CHAKRA_SERVICE_ACCOUNT_PATH"].endswith("k.json") and str(tmp_path.resolve()) in os.environ["CHAKRA_SERVICE_ACCOUNT_PATH"]
     monkeypatch.delenv("CHAKRA_SERVICE_ACCOUNT_PATH"); monkeypatch.delenv("CHAKRA_SPREADSHEET_ID")
+
+
+def test_foreign_os_home_is_ignored(monkeypatch, tmp_path):
+    from chakra_backend import settings
+    monkeypatch.setenv("CHAKRA_HOME", "E:/Python/Chakra/data/cache")
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+    if settings.os.name != "nt":
+        assert settings.data_dir() == tmp_path / "chakra"

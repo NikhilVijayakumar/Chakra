@@ -9,6 +9,11 @@ SECRET_KEYS = {"agentmail_api_key"}
 KEYS = {"spreadsheet_id", "service_account_path", "agentmail_api_key", "agentmail_inbox_id", "otp_ttl_seconds"}
 
 
+def _foreign_abs(v: str) -> bool:
+    """A Windows drive path (E:/x) read on POSIX would become a relative dir named 'E:'."""
+    return os.name != "nt" and len(v) > 2 and v[0].isalpha() and v[1] == ":" and v[2] in "/\\"
+
+
 def load_env() -> None:
     """Load CHAKRA_* from CHAKRA_ENV_FILE or the nearest .env above the cwd; real env vars win.
     Relative *_PATH values resolve against the .env directory."""
@@ -21,13 +26,14 @@ def load_env() -> None:
         k, v = k.strip(), v.strip().strip("\"'")
         if not sep or not k.startswith("CHAKRA_") or k in os.environ:
             continue
-        if k.endswith("_PATH") and v and not Path(v).is_absolute():
+        if (k.endswith("_PATH") or k == "CHAKRA_HOME") and v and not Path(v).is_absolute() and not _foreign_abs(v):
             v = str((path.parent / v).resolve())
         os.environ[k] = v
 
 
 def data_dir() -> Path:
-    if env := os.environ.get("CHAKRA_HOME"):
+    env = os.environ.get("CHAKRA_HOME")
+    if env and not _foreign_abs(env):  # ponytail: a path for another OS is ignored, default location used
         return Path(env)
     if os.name == "nt":
         return Path(os.environ.get("APPDATA", Path.home() / "AppData" / "Roaming")) / "chakra"
