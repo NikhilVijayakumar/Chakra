@@ -4,6 +4,7 @@ import { runCli, verifyCli } from './cliClient'
 import { createCliConfigStore } from './cliConfigStore'
 
 export interface IpcLike {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Electron handler args are untyped
   handle(channel: string, listener: (event: unknown, ...args: any[]) => unknown): void
 }
 export interface RegisterOptions {

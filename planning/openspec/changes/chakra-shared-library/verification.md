@@ -55,3 +55,6 @@ Gaps: Windows run (cli path + binary), restart persistence in e2e, SyncPanel per
 - Must-fix: none.
 - Suggestions: (1) the mirror case (POSIX `/path` in `CHAKRA_HOME` on Windows) is not handled; (2) `test_foreign_os_home_is_ignored` asserts nothing on Windows (guarded); (3) e2e is manual, not in npm scripts/CI and needs xvfb; (4) `lint` is still broken at baseline (flat config missing), so new files are unlinted; (5) the e2e script copies `c.sqlite` to `chakra.sqlite` because the test `Env` names its db `c.sqlite`.
 - Open: 3.8 Windows build/timing and 7.3 sync latency remain unverified.
+
+## Lint fixed (2026-11-05)
+Added `frontend/eslint.config.mjs` (ESLint 9 flat config, TS + React + hooks + prettier). `npm run lint`: 0 errors, 160 prettier-formatting warnings (run `npm run format` to clear). Two inline disables with reasons (`prefer-const` in `cliClient.ts`, `any` in `register.ts`). typecheck and 24 tests still pass.

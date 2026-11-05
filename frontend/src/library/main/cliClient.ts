@@ -37,6 +37,7 @@ export const runCli = (
     let out = ''
     let tooBig = false
     let settled = false
+    // eslint-disable-next-line prefer-const -- assigned after `done` is defined
     let timer: ReturnType<typeof setTimeout> | undefined
     const done = (e: Envelope<unknown>): void => {
       if (!settled) {
