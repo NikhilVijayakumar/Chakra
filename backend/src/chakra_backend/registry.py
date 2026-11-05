@@ -17,7 +17,12 @@ class Content:
     key: list[str]
     columns: list[str]
     feature: str | None = None
-    push: list[str] = field(default_factory=list)
+    writable: bool = False
+    id_prefix: str | None = None
+    required: list[str] = field(default_factory=list)
+    relations: list[tuple[str, str]] = field(default_factory=list)  # (column, related content id)
+    integers: list[str] = field(default_factory=list)
+    hidden: list[str] = field(default_factory=list)  # stored, never returned to callers
 
 
 @dataclass(frozen=True)
@@ -46,10 +51,19 @@ def parse(data: dict) -> Registry:
     for c in data["contents"]:
         cols = [_ident(x) for x in c["columns"]]
         key = [_ident(x) for x in c["key"]]
-        push = [_ident(x) for x in c.get("push", [])]
-        if not set(key) <= set(cols) or not set(push) <= set(cols):
-            raise ValueError(f"content {c['id']}: key/push must be columns")
-        contents[_ident(c["id"])] = Content(c["id"], c["tab"], key, cols, c.get("feature"), push)
+        extra = {k: [_ident(x) for x in c.get(k, [])] for k in ("required", "integers", "hidden")}
+        rels = [(_ident(r["column"]), _ident(r["content"])) for r in c.get("relations", [])]
+        if not set(key) | set(extra["required"]) | set(extra["integers"]) | set(extra["hidden"]) | {r[0] for r in rels} <= set(cols):
+            raise ValueError(f"content {c['id']}: key/required/integers/hidden/relations must be columns")
+        writable = bool(c.get("writable"))
+        if writable and key != ["id"]:
+            raise ValueError(f"content {c['id']}: writable contents need the single key 'id'")
+        contents[_ident(c["id"])] = Content(c["id"], c["tab"], key, cols, c.get("feature"), writable,
+                                            c.get("id_prefix"), extra["required"], rels, extra["integers"], extra["hidden"])
+    for c in contents.values():
+        for _, target in c.relations:
+            if target not in contents:
+                raise ValueError(f"content {c.id}: relation to unknown content {target}")
     return Registry(contents, data.get("auth", {}), data.get("apps", {}), bool(data.get("provisional")))
 
 

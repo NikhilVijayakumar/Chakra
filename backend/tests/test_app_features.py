@@ -1,6 +1,6 @@
 def test_enabled_app_lists_active_features(synced):
     d = synced.call("app", "info", {"appId": "app1"})["data"]
-    assert d["enabled"] and "holidays" in d["features"] and "employees" not in d["features"]
+    assert d["enabled"] and "holidays" in d["features"] and "employees" in d["features"]
 
 
 def test_unknown_or_disabled_app(synced):
@@ -15,7 +15,7 @@ def test_not_synced(env):
 def test_content_allowed_and_denied(synced):
     rows = synced.call("content", "get", {"appId": "app1", "content": "holidays"})["data"]["rows"]
     assert rows[0]["holiday_name"] == "New Year"
-    for c in ("employees", "apps"):  # internal contents have no feature
+    for c in ("apps", "app_employees"):  # internal contents have no feature
         assert synced.call("content", "get", {"appId": "app1", "content": c})["error"]["code"] == "feature_denied"
     assert synced.call("content", "get", {"appId": "app1", "content": "zzz"})["error"]["code"] == "unknown_content"
 

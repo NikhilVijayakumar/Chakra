@@ -31,6 +31,12 @@ def info(ctx, req: dict) -> dict:
     return {"appId": app_id, "enabled": True, "features": feats}
 
 
+def need_enabled(ctx, req: dict) -> None:
+    """Permission is given to the app in the sheet: an enabled app may read and write writable contents."""
+    (app_id,) = _need(req, "appId")
+    info(ctx, {"appId": app_id})
+
+
 def can(ctx, req: dict) -> dict:
     app_id, feature = _need(req, "appId", "feature")
     return {"allowed": feature in info(ctx, {"appId": app_id})["features"]}
@@ -45,4 +51,4 @@ def content_get(ctx, req: dict) -> dict:
     where = req.get("where")
     if where is not None and not isinstance(where, dict):
         raise ChakraError("invalid_request", "where must be an object")
-    return {"rows": dbm.effective_rows(ctx.db, content, where)}
+    return {"rows": dbm.effective_rows(ctx.db, content, where, hide=True)}

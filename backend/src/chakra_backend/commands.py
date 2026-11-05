@@ -1,11 +1,11 @@
 """Command table: (group, command) -> handler(ctx, request) -> data."""
 from __future__ import annotations
 
-from . import __version__, appfeatures, auth, sheets, sync
+from . import __version__, appfeatures, auth, quarantine, sheets, sync, writes
 from .errors import ChakraError
 from .settings import KEYS, SECRET_KEYS
 
-API_VERSION = 1
+API_VERSION = 2
 
 
 def version(ctx, req):
@@ -52,5 +52,10 @@ COMMANDS = {
     ("sync", "run"): sync.run, ("sync", "status"): sync.status,
     ("app", "info"): appfeatures.info, ("app", "can"): appfeatures.can,
     ("content", "get"): appfeatures.content_get,
+    ("content", "create"): writes.create, ("content", "update"): writes.update, ("content", "delete"): writes.delete,
+    ("quarantine", "list"): quarantine.list_, ("quarantine", "count"): quarantine.count,
+    ("quarantine", "reject"): quarantine.reject, ("quarantine", "accept-sheets"): quarantine.accept_sheets,
+    ("quarantine", "apply-local"): quarantine.apply_local, ("quarantine", "fix"): quarantine.fix,
+    ("quarantine", "delete-record"): quarantine.delete_record, ("quarantine", "scan"): quarantine.scan,
     ("config", "get"): config_get, ("config", "set"): config_set,
 }

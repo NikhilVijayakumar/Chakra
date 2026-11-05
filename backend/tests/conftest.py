@@ -17,27 +17,47 @@ def hp(p):
 class FakeSheets:
     def __init__(self):
         self.tabs = {
-            "Employee": [["ID", "Name", "Email", "Password_Hash", "Department_ID", "Designation_ID", "Status"],
-                         ["e1", "Asha", "Asha@x.com", hp("secret"), "d1", "g1", "active"],
-                         ["e2", "Old", "old@x.com", hp("pw"), "d1", "g1", "inactive"]],
+            "Employee": [["ID", "Name", "Email", "Password_Hash", "Department_ID", "Designation_ID", "Status", "sync"],
+                         ["e1", "Asha", "Asha@x.com", hp("secret"), "d1", "g1", "active", "100"],
+                         ["e2", "Old", "old@x.com", hp("pw"), "d1", "g1", "inactive", "100"]],
+            "Department": [["id", "name", "status", "sync"], ["d1", "Eng", "active", "100"]],
+            "Designation": [["id", "name", "status", "sync"], ["g1", "Dev", "active", "100"]],
             "App": [["ID", "Name", "Status"], ["app1", "App One", "active"], ["app2", "App Two", "disabled"]],
-            "Holiday": [["ID", "Date", "Holiday_Name"], ["h1", "2026-01-01", "New Year"]],
-            "LeaveType": [["ID", "Leave_Type", "Count", "Carry_Forward", "Max_Forward"], ["l1", "casual", "12", "1", "5"]],
+            "Holiday": [["ID", "Date", "Holiday Name", "sync"], ["h1", "2026-01-01", "New Year", "100"]],
+            "LeaveType": [["ID", "Leave Type", "Count", "Carry Forward", "Max Forward", "sync"], ["l1", "casual", "12", "TRUE", "5", "100"]],
         }
         self.fail: set[str] = set()
-        self.writes: list = []
+        self.writes: list = []  # (kind, tab, payload)
         self.offline = False
 
-    def read(self, sid, tab):
+    def _check(self, tab):
         if self.offline or tab in self.fail or tab not in self.tabs:
             raise ChakraError("sheets_unavailable", f"{tab} unreachable")
+
+    def read(self, sid, tab):
+        self._check(tab)
         return [list(r) for r in self.tabs[tab]]
 
-    def write_cell(self, sid, tab, row, col, value):
-        if self.offline:
-            raise ChakraError("sheets_unavailable", "offline")
-        self.tabs[tab][row][col] = value
-        self.writes.append((tab, row, col, value))
+    def update_rows(self, sid, tab, rows):
+        self._check(tab)
+        for i, r in rows.items():
+            self.tabs[tab][i] = list(r)
+        self.writes.append(("update", tab, dict(rows)))
+
+    def append_rows(self, sid, tab, rows):
+        self._check(tab)
+        self.tabs[tab].extend(list(r) for r in rows)
+        self.writes.append(("append", tab, list(rows)))
+
+    def delete_rows(self, sid, tab, indexes):
+        self._check(tab)
+        for i in sorted(indexes, reverse=True):
+            del self.tabs[tab][i]
+        self.writes.append(("delete", tab, list(indexes)))
+
+    def cell(self, tab, row_id, column):
+        h = [x.strip().lower().replace(" ", "_") for x in self.tabs[tab][0]]
+        return next(r[h.index(column)] for r in self.tabs[tab][1:] if r[0] == row_id)
 
 
 class FakeMailer:

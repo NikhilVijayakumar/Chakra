@@ -5,8 +5,8 @@ import json
 import os
 from pathlib import Path
 
-SECRET_KEYS = {"agentmail_api_key"}
-KEYS = {"spreadsheet_id", "service_account_path", "agentmail_api_key", "agentmail_inbox_id", "otp_ttl_seconds"}
+SECRET_KEYS = {"agentmail_api_key", "default_password"}
+KEYS = {"spreadsheet_id", "service_account_path", "agentmail_api_key", "agentmail_inbox_id", "otp_ttl_seconds", "default_password"}
 
 
 def _foreign_abs(v: str) -> bool:

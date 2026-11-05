@@ -9,7 +9,9 @@ from .errors import ChakraError
 
 class SheetsClient(Protocol):
     def read(self, spreadsheet_id: str, tab: str) -> list[list[str]]: ...
-    def write_cell(self, spreadsheet_id: str, tab: str, row: int, col: int, value: str) -> None: ...
+    def update_rows(self, spreadsheet_id: str, tab: str, rows: dict[int, list[str]]) -> None: ...  # row index (0 = header) -> full row
+    def append_rows(self, spreadsheet_id: str, tab: str, rows: list[list[str]]) -> None: ...
+    def delete_rows(self, spreadsheet_id: str, tab: str, indexes: list[int]) -> None: ...
 
 
 def _a1(col: int) -> str:  # 0-based -> A, B, ... AA
@@ -47,14 +49,38 @@ class GoogleSheets:
             raise ChakraError("sheets_unavailable", f"read '{tab}' failed: {type(e).__name__}") from e
         return r.get("values", [])
 
-    def write_cell(self, spreadsheet_id: str, tab: str, row: int, col: int, value: str) -> None:
-        cell = f"{tab}!{_a1(col)}{row + 1}"
+    def _do(self, tab: str, what: str, fn):
         try:
-            self._service().values().update(spreadsheetId=spreadsheet_id, range=cell, valueInputOption="USER_ENTERED", body={"values": [[value]]}).execute()
+            return fn(self._service())
         except ChakraError:
             raise
         except Exception as e:
-            raise ChakraError("sheets_unavailable", f"write '{tab}' failed: {type(e).__name__}") from e
+            raise ChakraError("sheets_unavailable", f"{what} '{tab}' failed: {type(e).__name__}") from e
+
+    def update_rows(self, spreadsheet_id: str, tab: str, rows: dict[int, list[str]]) -> None:
+        if rows:
+            data = [{"range": f"{tab}!A{i + 1}", "values": [v]} for i, v in rows.items()]
+            self._do(tab, "write", lambda s: s.values().batchUpdate(spreadsheetId=spreadsheet_id, body={"valueInputOption": "RAW", "data": data}).execute())
+
+    def append_rows(self, spreadsheet_id: str, tab: str, rows: list[list[str]]) -> None:
+        if rows:
+            self._do(tab, "append to", lambda s: s.values().append(
+                spreadsheetId=spreadsheet_id, range=f"{tab}!A:A", valueInputOption="RAW", insertDataOption="INSERT_ROWS", body={"values": rows}).execute())
+
+    def delete_rows(self, spreadsheet_id: str, tab: str, indexes: list[int]) -> None:
+        if not indexes:
+            return
+
+        def go(s):
+            meta = s.get(spreadsheetId=spreadsheet_id, fields="sheets.properties").execute()
+            sid = next((x["properties"]["sheetId"] for x in meta.get("sheets", []) if x["properties"]["title"] == tab), None)
+            if sid is None:
+                raise ChakraError("sheets_unavailable", f"tab '{tab}' not found")
+            reqs = [{"deleteDimension": {"range": {"sheetId": sid, "dimension": "ROWS", "startIndex": i, "endIndex": i + 1}}}
+                    for i in sorted(indexes, reverse=True)]  # bottom-up keeps the other indexes valid
+            s.batchUpdate(spreadsheetId=spreadsheet_id, body={"requests": reqs}).execute()
+
+        self._do(tab, "delete from", go)
 
 
 def service_account_status(path: str | None) -> tuple[bool, str]:

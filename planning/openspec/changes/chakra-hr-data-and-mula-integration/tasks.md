@@ -7,38 +7,38 @@
 Ownership: sections 2-6 change only Chakra and must stay Mula-agnostic (no Mula names, ids, UI or defaults; behavior from `specs/`). Section 7 changes only Mula, using Chakra solely through the library. Use test-first where applicable. Do not mark tasks complete without verification evidence; record results in `verification.md`. Branch (Chakra): `feature/chakra-hr-data-and-mula-integration` from `develop`. Mula gets a matching branch from its `develop`; Mula changes need the owner's confirmation per Mula's `AGENTS.md` before section 7 starts. Windows verification is excluded (done separately).
 
 ## 1. Preparation and Baseline
-- [ ] 1.1 Answer the remaining open questions (default password, durability of cache). Decided already: tab names come from the sheet; permission is per app.
-- [ ] 1.2 Registry fixes found against the real sheet: add the `id` key to `employee_teams`; add the `sync` column to every content (all tabs have it); normalize header matching (headers include `short key`, `Holiday Name`, `carry forward`, `value ` with a trailing space); treat `carry_forward` as text, only `count` and `max_forward` as integers. Use a scratch copy of the spreadsheet for write tests.
-- [ ] 1.3 Create the Chakra feature branch from `develop`; record baseline: backend `pytest`, frontend `typecheck`, `lint`, `test`.
+- [x] 1.1 Answer the remaining open questions (default password, durability of cache). Decided already: tab names come from the sheet; permission is per app.
+- [x] 1.2 Registry fixes found against the real sheet: add the `id` key to `employee_teams`; add the `sync` column to every content (all tabs have it); normalize header matching (headers include `short key`, `Holiday Name`, `carry forward`, `value ` with a trailing space); treat `carry_forward` as text, only `count` and `max_forward` as integers.
+- [x] 1.3 Create the Chakra feature branch from `develop`; record baseline: backend `pytest`, frontend `typecheck`, `lint`, `test`.
 - [ ] 1.4 Record Mula baseline: `npm install`, `typecheck`, `lint`, `build` (note pre-existing failures).
-- [ ] 1.5 Knowledge first: add backend concepts (write path and dirty/stamp model, quarantine), amend `knowledge/concepts/library-and-cli-split.md` and the CLI contract concept for durable pending edits and `apiVersion` 2; run `scripts/verify_knowledge.py` on all bundles.
+- [x] 1.5 Knowledge first: add backend concepts (write path and dirty/stamp model, quarantine), amend `knowledge/concepts/library-and-cli-split.md` and the CLI contract concept for durable pending edits and `apiVersion` 2; run `scripts/verify_knowledge.py` on all bundles.
 
 ## 2. Backend: registry, cache schema, validation
 **Traceability:** `specs/content-write`, `specs/two-way-sync` (pull validation), design sections 4-5.
-- [ ] 2.1 Tests: registry loads new fields; unknown relation/column rejected at load; tables get `sync`, `is_dirty`, `is_deleted`; `quarantine` table exists; older cache version is rebuilt.
-- [ ] 2.2 Implement registry fields (`writable`, `id_prefix`, `required`, `relations`, `integers`, `sync_column`), HR content entries, cache schema and `user_version` handling.
-- [ ] 2.3 Tests then implementation for `validate.py`: `missing_id`, `missing_required`, `invalid_relation`, `type_mismatch`.
-- [ ] 2.4 Give `employees` and `config` features so `content get` can serve them; exclude `password_hash` from `content get`; exclude deleted rows by default.
+- [x] 2.1 Tests: registry loads new fields; unknown relation/column rejected at load; tables get `sync`, `is_dirty`, `is_deleted`; `quarantine` table exists; older cache version is rebuilt.
+- [x] 2.2 Implement registry fields (`writable`, `id_prefix`, `required`, `relations`, `integers`, `sync_column`), HR content entries, cache schema and `user_version` handling.
+- [x] 2.3 Tests then implementation for `validate.py`: `missing_id`, `missing_required`, `invalid_relation`, `type_mismatch`.
+- [x] 2.4 Give `employees` and `config` features so `content get` can serve them; exclude `password_hash` from `content get`; exclude deleted rows by default.
 
 ## 3. Backend: writes
 **Traceability:** `specs/content-write`, `specs/app-features`.
-- [ ] 3.1 Tests: create (generated id per prefix, validation errors, duplicate id, required, relation), update, delete, durability across a new connection, read-only content.
-- [ ] 3.2 Implement `writes.py` and register `content create|update|delete`; employee password hashing (default initial password as a setting); never return hashes.
-- [ ] 3.3 Tests then implementation of `can_write` (enabled app allowed; disabled/unknown app `app_not_enabled`; not synced `not_synced`) and the library-supplied `appId` rule at the CLI boundary.
+- [x] 3.1 Tests: create (generated id per prefix, validation errors, duplicate id, required, relation), update, delete, durability across a new connection, read-only content.
+- [x] 3.2 Implement `writes.py` and register `content create|update|delete`; employee password hashing (default initial password as a setting); never return hashes.
+- [x] 3.3 Tests then implementation of `can_write` (enabled app allowed; disabled/unknown app `app_not_enabled`; not synced `not_synced`) and the library-supplied `appId` rule at the CLI boundary.
 
 ## 4. Backend: two-way sync
 **Traceability:** `specs/two-way-sync`, ADR.
-- [ ] 4.1 Extend `FakeSheets` (append, range update, delete rows, header order, sync column). Write characterization tests named after Mula's rules: insert absent, sheet-newer replace, skip when local newer, conflict record, absent-and-clean soft delete, absent-and-dirty kept, push new, push newer, skip older, delete phase, dirty cleared only when pushed.
-- [ ] 4.2 Implement `sheets.py` additions (append, batch update, delete rows bottom-up, header-based positions) and verify against the Google client with a small live read.
-- [ ] 4.3 Implement push then pull in `sync.py` in dependency order; per-content isolation; extended results and `sync status` counts.
-- [ ] 4.4 Move password reset onto the dirty-row mechanism and remove `pending_updates`; keep existing reset/login tests passing (update where the storage differs).
-- [ ] 4.5 Failure-injection tests: write failure keeps dirty, pull failure keeps previous rows, cache deleted loses unpushed edits only.
+- [x] 4.1 Extend `FakeSheets` (append, range update, delete rows, header order, sync column). Write characterization tests named after Mula's rules: insert absent, sheet-newer replace, skip when local newer, conflict record, absent-and-clean soft delete, absent-and-dirty kept, push new, push newer, skip older, delete phase, dirty cleared only when pushed.
+- [ ] 4.2 Implement `sheets.py` additions (append, batch update, delete rows bottom-up, header-based positions). Implemented; live verification against a scratch copy of the sheet is done in 8.3.
+- [x] 4.3 Implement push then pull in `sync.py` in dependency order; per-content isolation; extended results and `sync status` counts.
+- [x] 4.4 Move password reset onto the dirty-row mechanism and remove `pending_updates`; keep existing reset/login tests passing (update where the storage differs).
+- [x] 4.5 Failure-injection tests: write failure keeps dirty, pull failure keeps previous rows, cache deleted loses unpushed edits only.
 
 ## 5. Backend: quarantine and contract
 **Traceability:** `specs/quarantine`, `specs/backend-cli`.
-- [ ] 5.1 Tests then implementation: record with dedupe, list (status filter, newest first), count, reject, accept-sheets (conflict and validation), apply-local (conflict only), fix (valid and still invalid), delete-record, scan.
-- [ ] 5.2 Register `quarantine *` commands; `API_VERSION = 2`; new error codes; update the contract test suite and `meta version` expectations; bump backend version to 0.3.0.
-- [ ] 5.3 Rebuild the CLI binary (onefile and onedir); verify `meta version`; generalize `tests/seed_demo.py`.
+- [x] 5.1 Tests then implementation: record with dedupe, list (status filter, newest first), count, reject, accept-sheets (conflict and validation), apply-local (conflict only), fix (valid and still invalid), delete-record, scan.
+- [x] 5.2 Register `quarantine *` commands; `API_VERSION = 2`; new error codes; update the contract test suite and `meta version` expectations; bump backend version to 0.3.0.
+- [x] 5.3 Rebuild the CLI binary (onefile and onedir); verify `meta version`; generalize `tests/seed_demo.py`.
 
 ## 6. Library
 **Traceability:** `specs/library-operations`.
@@ -60,7 +60,7 @@ Ownership: sections 2-6 change only Chakra and must stay Mula-agnostic (no Mula 
 ## 8. Integration and Verification
 - [ ] 8.1 Run all Chakra checks: backend pytest, frontend typecheck/lint/test/build, knowledge verify.
 - [ ] 8.2 End-to-end run of Mula against the built CLI with a seeded cache: login, list, create, edit, delete, sync, quarantine resolve. Record evidence.
-- [ ] 8.3 Live run on the scratch copy of the real sheet: create/edit/delete then sync; confirm the sheet rows (including the `sync` column) and a conflict case from two caches; record timings against the ADR review trigger.
+- [ ] 8.3 Create a scratch copy of the spreadsheet (needs owner approval), verify the new `sheets.py` calls live, then run on it of the real sheet: create/edit/delete then sync; confirm the sheet rows (including the `sync` column) and a conflict case from two caches; record timings against the ADR review trigger.
 - [ ] 8.4 Verify every scenario in `specs/` and record evidence; list unverified items (Windows).
 - [ ] 8.5 Update README, `AGENTS.md`, `docs/library.md`, Mula docs; accept the ADR into `backend/knowledge/decisions/`; update knowledge logs.
 - [ ] 8.6 `code-reviewer` review of both repos' diffs; fix findings.
