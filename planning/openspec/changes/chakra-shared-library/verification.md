@@ -21,7 +21,9 @@
 
 ## 7.3 Latency (partial)
 - `auth login` via onefile CLI, local cache: 0.64-0.68s per call (5 runs; includes process start + bcrypt). Below a level that triggers the ADR daemon review.
-- Sync latency NOT measured: needs live Google Sheets credentials. Task 7.3 stays open.
+- Sync, live Google Sheets (real `.env`, fresh cache, onefile CLI, 3 runs): 7.83s, 7.11s, 6.70s for 12 contents (about 0.6s per tab, read sequentially). All 12 ok.
+- Assessment: login is well under a second; sync is an explicit/background action and about 7s is acceptable, so the ADR daemon review trigger is not met. Possible later speed-up: one `batchGet` for all tabs.
+- Note: the first live sync failed with `KeyError` because the local venv's `googleapiclient/schema.py` was corrupted; a force reinstall fixed it and the CLI was rebuilt. Not a project defect. The e2e was re-run after the `src/library` rename: OK.
 
 ## 8.2 Scenario traceability (2026-11-05)
 Evidence runs: backend `pytest` 29 passed; frontend `vitest` 23 passed (before this section); Electron e2e OK (7.2); built binary answers `meta version`.

@@ -57,7 +57,7 @@ Use test-first where applicable. Do not mark tasks complete without verification
 ## 7. Packaging and reference consumer
 - [x] 7.1 Rename package to scoped `@nikhilvijayakumar/chakra-ui`; entry points and `exports`/`files`; consumable via git dependency. Not yet tested by installing from git into another app.
 - [x] 7.2 Minimal reference consumer app that mounts the library; end-to-end run with stub then built CLI.
-- [ ] 7.3 Measure login and sync latency; record result against the ADR review trigger.
+- [x] 7.3 Measure login and sync latency; record result against the ADR review trigger.
 
 ## 8. Integration and Final Verification
 - [x] 8.1 Run backend pytest and frontend `typecheck`, `lint`, `test`, `build`.
