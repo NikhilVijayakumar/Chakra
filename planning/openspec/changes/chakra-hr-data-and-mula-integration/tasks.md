@@ -42,10 +42,10 @@ Ownership: sections 2-6 change only Chakra and must stay Mula-agnostic (no Mula 
 
 ## 6. Library
 **Traceability:** `specs/library-operations`.
-- [ ] 6.1 Tests: whitelist includes the new ops and rejects others; `appId` injected for each; `quarantine.scan` and `sync.run` use the long timeout; `SUPPORTED_API_VERSION` 2 rejects a v1 CLI.
-- [ ] 6.2 Implement contract, main registration, preload bridge, typed helpers and hooks (`useContent`, `useContentMutations`, `useQuarantine`); mapped error messages (`app_not_enabled`, `validation_failed`).
-- [ ] 6.3 Typecheck, lint, tests, `build:lib`; `npm pack`; install the tarball into a blank app and check exports; bump to 0.3.0; update `docs/library.md`.
-- [ ] 6.4 Extend the Electron e2e (`frontend/e2e/consumer.mjs`) with create, edit, delete and a sync against a fake-sheet-seeded cache.
+- [x] 6.1 Tests: whitelist includes the new ops and rejects others; `appId` injected for each; `quarantine.scan` and `sync.run` use the long timeout; `SUPPORTED_API_VERSION` 2 rejects a v1 CLI.
+- [x] 6.2 Implement contract, main registration, preload bridge, typed helpers and hooks (`useContent`, `useContentMutations`, `useQuarantine`); mapped error messages (`app_not_enabled`, `validation_failed`).
+- [x] 6.3 Typecheck, lint, tests, `build:lib`; `npm pack`; install the tarball into a blank app and check exports; bump to 0.3.0; update `docs/library.md`.
+- [x] 6.4 Extend the Electron e2e (`frontend/e2e/consumer.mjs`) with create, edit, delete and a sync against a fake-sheet-seeded cache.
 
 ## 7. Mula integration (needs owner confirmation first)
 **Traceability:** `specs/mula-integration`.
@@ -60,7 +60,7 @@ Ownership: sections 2-6 change only Chakra and must stay Mula-agnostic (no Mula 
 ## 8. Integration and Verification
 - [ ] 8.1 Run all Chakra checks: backend pytest, frontend typecheck/lint/test/build, knowledge verify.
 - [ ] 8.2 End-to-end run of Mula against the built CLI with a seeded cache: login, list, create, edit, delete, sync, quarantine resolve. Record evidence.
-- [ ] 8.3 Create a scratch copy of the spreadsheet (needs owner approval), verify the new `sheets.py` calls live, then run on it of the real sheet: create/edit/delete then sync; confirm the sheet rows (including the `sync` column) and a conflict case from two caches; record timings against the ADR review trigger.
+- [ ] 8.3 Create a scratch copy of the spreadsheet (needs owner approval), verify the new `sheets.py` calls live, then run create/edit/delete and sync on it; confirm the sheet rows (including the `sync` column) and a conflict case from two caches; record timings against the ADR review trigger.
 - [ ] 8.4 Verify every scenario in `specs/` and record evidence; list unverified items (Windows).
 - [ ] 8.5 Update README, `AGENTS.md`, `docs/library.md`, Mula docs; accept the ADR into `backend/knowledge/decisions/`; update knowledge logs.
 - [ ] 8.6 `code-reviewer` review of both repos' diffs; fix findings.

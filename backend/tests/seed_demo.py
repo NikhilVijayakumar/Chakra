@@ -8,5 +8,5 @@ from conftest import Env  # noqa: E402
 e = Env(Path(sys.argv[1]))
 e.sheets.tabs["App"].append(["chakra-demo", "Chakra Demo", "active"])
 for c in e.registry.contents.values():  # header-only tabs for contents the fake lacks
-    e.sheets.tabs.setdefault(c.tab, [list(c.columns)])
+    e.sheets.tabs.setdefault(c.tab, [[*c.columns, *(["sync"] if c.writable else [])]])
 e.call("sync", "run")

@@ -47,6 +47,20 @@ python backend/build_cli.py                                       # standalone b
 
 Configure it once with `chakra config set` (JSON on stdin): `spreadsheet_id`, `service_account_path`, `agentmail_api_key`, `agentmail_inbox_id`. The data directory is `%APPDATA%\chakra` on Windows, `$XDG_DATA_HOME/chakra` on Linux (override with `CHAKRA_HOME`).
 
-Sheets are the source of content; SQLite is a disposable cache. A sheet layout change is a change to `backend/src/chakra_backend/contents.json` only (currently provisional).
+Sheets are the source of content; SQLite is a cache that also holds edits not yet pushed (deleting it loses those edits only). A sheet layout change is a change to `backend/src/chakra_backend/contents.json` only (currently provisional).
 
-The contract is in `planning/openspec/changes/chakra-shared-library/api-contract.md`.
+## Reading and writing content
+
+An app has no database. It reads and writes through the library, and the CLI keeps the cache and the sheet in step. An app may read and write only if the sheet marks it enabled.
+
+```tsx
+const { rows, reload } = useContent('departments')                 // live rows
+const { create, update, remove } = useContentMutations('departments', reload)
+await create({ name: 'Ops', status: 'active' })                    // { ok, error, row }
+```
+
+Edits are stored locally and pushed to the sheet at the next sync (`useSync().run()`). A sync also pulls the sheet: the row with the newer `sync` stamp wins, a row changed on both sides is kept as a `conflict`, and rows that fail validation (missing id or required field, unknown relation, non-integer number) are held in quarantine instead of being loaded. Resolve them with `useQuarantine()` (`reject`, `acceptSheets`, `applyLocal`, `fix`, `deleteRecord`, `scan`) and show a badge with `useQuarantineCount()`. Passwords are sent as plain input and stored only as bcrypt hashes; they are never returned.
+
+Writable contents, ids and required fields are data in `contents.json`. Set `default_password` with `chakra config set` if new employees may be created without a password.
+
+The contract (CLI `apiVersion` 2) is in `planning/openspec/changes/chakra-hr-data-and-mula-integration/api-contract.md`, extending `chakra-shared-library/api-contract.md`. A library at 0.3.0 needs the 0.3.0 CLI; an older CLI is reported as incompatible.

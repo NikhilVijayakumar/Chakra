@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { SyncResult, SyncStatus, User, VerifyResult } from '../shared/contract'
+import type { Op, QuarantineEntry, Row, SyncResult, SyncStatus, User, VerifyResult } from '../shared/contract'
 import { call, getApi } from './api'
 import { defaultStrings, messageFor } from './strings'
 import type { Strings } from './strings'
@@ -134,4 +134,84 @@ export const useSync = (onChange?: (s: SyncStatus | null) => void) => {
     await refresh()
   }
   return { status, last, busy, error, refresh, run }
+}
+
+/** Validation errors name the field and never a secret (CLI contract), so they are shown as-is; others are mapped. */
+const errText = (e: { code: string; message: string }): string => (e.code === 'validation_failed' ? e.message : messageFor(e.code))
+
+/** Live rows of one content. `reload` after changes made elsewhere. */
+export const useContent = (content: string, where?: Record<string, string>) => {
+  const [rows, setRows] = useState<Row[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const key = JSON.stringify(where ?? null)
+  const reload = useCallback(async () => {
+    setLoading(true)
+    const r = await call<{ rows: Row[] }>('content.get', { content, where: key === 'null' ? undefined : JSON.parse(key) })
+    setLoading(false)
+    if (r.ok) { setRows(r.data.rows); setError(null) } else setError(errText(r.error))
+  }, [content, key])
+  useEffect(() => { void reload() }, [reload])
+  return { rows, loading, error, reload }
+}
+
+export interface MutationResult { ok: boolean; error: string | null; row?: Row }
+
+/** Create, update and delete for one content. Edits stay local until the next sync pushes them. */
+export const useContentMutations = (content: string, onChange?: () => void) => {
+  const [busy, setBusy] = useState(false)
+  const run = async (op: 'content.create' | 'content.update' | 'content.delete', payload: Record<string, unknown>): Promise<MutationResult> => {
+    setBusy(true)
+    const r = await call<{ row?: Row }>(op, { content, ...payload })
+    setBusy(false)
+    if (!r.ok) return { ok: false, error: errText(r.error) }
+    onChange?.()
+    return { ok: true, error: null, row: r.data.row }
+  }
+  return {
+    busy,
+    create: (record: Row) => run('content.create', { record }),
+    update: (id: string, record: Partial<Row>) => run('content.update', { id, record }),
+    remove: (id: string) => run('content.delete', { id })
+  }
+}
+
+/** Pending quarantine entries with the resolution actions. Every action reloads the list. */
+export const useQuarantine = (status = 'pending') => {
+  const [entries, setEntries] = useState<QuarantineEntry[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const reload = useCallback(async () => {
+    const r = await call<{ entries: QuarantineEntry[] }>('quarantine.list', { status })
+    if (r.ok) { setEntries(r.data.entries); setError(null) } else setError(errText(r.error))
+  }, [status])
+  useEffect(() => { void reload() }, [reload])
+  const act = async (op: Op, payload: Record<string, unknown>): Promise<MutationResult> => {
+    setBusy(true)
+    const r = await call<{ row?: Row; newIssues?: number }>(op, payload)
+    setBusy(false)
+    if (!r.ok) { const e = errText(r.error); setError(e); return { ok: false, error: e } }
+    await reload()
+    return { ok: true, error: null, row: r.data.row }
+  }
+  return {
+    entries, error, busy, reload,
+    reject: (id: string) => act('quarantine.reject', { id }),
+    acceptSheets: (id: string) => act('quarantine.acceptSheets', { id }),
+    applyLocal: (id: string) => act('quarantine.applyLocal', { id }),
+    fix: (id: string, record: Row) => act('quarantine.fix', { id, record }),
+    deleteRecord: (id: string) => act('quarantine.deleteRecord', { id }),
+    scan: () => act('quarantine.scan', {})
+  }
+}
+
+/** Number of pending quarantine entries, for badges. */
+export const useQuarantineCount = () => {
+  const [count, setCount] = useState(0)
+  const reload = useCallback(async () => {
+    const r = await call<{ count: number }>('quarantine.count')
+    if (r.ok) setCount(r.data.count)
+  }, [])
+  useEffect(() => { void reload() }, [reload])
+  return { count, reload }
 }
