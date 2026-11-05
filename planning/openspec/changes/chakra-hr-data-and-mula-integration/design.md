@@ -9,6 +9,8 @@ Let Mula use Chakra for all HR data, Sheets access and authentication by giving 
 `backend/` (registry, cache schema, new modules, commands), `frontend/src/library` (contract, IPC, preload, hooks), Mula's main, preload and renderer. Not the sheet layout.
 
 ### Design Principles
+Chakra is common: no Mula logic, names, ids, screens or defaults enter Chakra code, tests, knowledge or docs. Mula's behavior was only the evidence for requirements; the behavior is defined by `specs/` and stays generic and registry-driven. Changes live in both repos with a hard boundary: sections 2-6 of the tasks are Chakra (`backend/`, `frontend/`), section 7 is Mula.
+
 One generic path driven by the registry instead of per-module code; transfer Mula's rules unchanged (they are the behavior users already rely on); keep the process-per-call model ([CLI process per call](../../../../backend/knowledge/decisions/cli-process-per-call.md)); secrets and hashing stay in the CLI; smallest additions to the existing modules.
 
 ## 2. Context and Constraints

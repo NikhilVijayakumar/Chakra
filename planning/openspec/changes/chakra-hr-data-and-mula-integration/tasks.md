@@ -4,7 +4,7 @@
 - **Status:** Not Started
 - **Related artifacts:** `proposal.md`, `specs/`, `api-contract.md`, `design.md`, `adr.md`
 
-Use test-first where applicable. Do not mark tasks complete without verification evidence; record results in `verification.md`. Branch (Chakra): `feature/chakra-hr-data-and-mula-integration` from `develop`. Mula gets a matching branch from its `develop`; Mula changes need the owner's confirmation per Mula's `AGENTS.md` before section 7 starts. Windows verification is excluded (done separately).
+Ownership: sections 2-6 change only Chakra and must stay Mula-agnostic (no Mula names, ids, UI or defaults; behavior from `specs/`). Section 7 changes only Mula, using Chakra solely through the library. Use test-first where applicable. Do not mark tasks complete without verification evidence; record results in `verification.md`. Branch (Chakra): `feature/chakra-hr-data-and-mula-integration` from `develop`. Mula gets a matching branch from its `develop`; Mula changes need the owner's confirmation per Mula's `AGENTS.md` before section 7 starts. Windows verification is excluded (done separately).
 
 ## 1. Preparation and Baseline
 - [ ] 1.1 Answer the remaining open questions (default password, durability of cache). Decided already: tab names come from the sheet; permission is per app.

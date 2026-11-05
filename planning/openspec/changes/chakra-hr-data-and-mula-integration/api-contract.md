@@ -22,7 +22,7 @@ All new write operations require `appId` (set by the library main process, never
 | `quarantine accept-sheets` | `{ appId, id }` | `{ updated: true }` |
 | `quarantine apply-local` | `{ appId, id }` | `{ updated: true }` (conflicts only) |
 | `quarantine fix` | `{ appId, id, record }` | `{ row }` |
-| `quarantine delete-record` | `{ appId, id }` | `{ updated: true }` (marks `rejected`, as Mula does) |
+| `quarantine delete-record` | `{ appId, id }` | `{ updated: true }` (marks `rejected`) |
 | `quarantine scan` | `{ appId }` | `{ newIssues }` |
 
 `Entry` = `{ id, content, recordId, reason, details, sheetsData, localData, status, createdAt }` where `reason` is `missing_id | missing_required | invalid_relation | type_mismatch | conflict` and `status` is `pending | resolved | rejected`. `id` is generated (`QRN` + timestamp + random).
@@ -48,7 +48,7 @@ New whitelisted ops in `OPS`: `content.create`, `content.update`, `content.delet
 
 ## Data and trust boundaries
 
-- The CLI owns SQLite, the sheet writes and password hashing. Mula holds no credentials after the migration.
+- The CLI owns SQLite, the sheet writes and password hashing. Consumer apps hold no credentials.
 - Cache tables gain `sync` (integer epoch seconds, nullable), `is_dirty`, `is_deleted`; a `quarantine` table is added. The cache carries a schema version; an older cache is rebuilt (unpushed edits in an old cache are lost; password updates pending in the old `pending_updates` table are carried over by marking the employee row dirty before the rebuild when possible, otherwise lost and reported).
 - `content get` never returns `password_hash` or OTP data; the renderer receives only sanitized envelopes.
 - Sheet writes go by header name (column positions looked up in the header row), not fixed letters, so column reordering does not corrupt data. Writes use `valueInputOption=RAW`.
@@ -61,5 +61,5 @@ New whitelisted ops in `OPS`: `content.create`, `content.update`, `content.delet
 - Contract tests cover every new operation, each error code, and the unchanged operations.
 
 ## Open questions
-- [ ] Default initial password: keep Mula's `change@123` as a CLI setting default, or force a reset flow instead?
-- [ ] `content get` for `employees`: confirm returning all columns except `password_hash` is acceptable to Mula's UI.
+- [ ] Default initial password: a CLI setting `default_password` with no built-in default (create fails with `validation_failed` if unset and no password is given), or a forced reset flow?
+- [ ] `content get` for `employees`: confirm returning all columns except `password_hash` is acceptable to consumers.
