@@ -11,7 +11,7 @@ Build both parts for this machine (Windows, Linux, macOS) with one script. Outpu
 python scripts/build.py                  # library tarball + CLI folder in ./dist
 python scripts/build.py --lib | --cli [--onefile] [--out DIR]
 ```
-An app installs the tarball (`npm install dist/nikhilvijayakumar-chakra-ui-<version>.tgz`) and sets the CLI path in the library's configuration screen.
+Output folders come from `.env` (`CHAKRA_BUILD_DIR`, or `CHAKRA_BUILD_LIB_DIR` / `CHAKRA_BUILD_CLI_DIR`; see `.env.example`); a machine without those uses `./dist`. An app installs the tarball (`npm install dist/nikhilvijayakumar-chakra-ui-<version>.tgz`) and sets the CLI path in the library's configuration screen.
 
 ```bash
 cd backend && python -m venv .venv && .venv/bin/pip install -e .[dev] && .venv/bin/pytest
