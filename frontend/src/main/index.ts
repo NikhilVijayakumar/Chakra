@@ -1,7 +1,7 @@
 // Reference consumer: the smallest Electron app that mounts Chakra UI.
 import { app, BrowserWindow } from 'electron'
 import { join } from 'node:path'
-import { registerChakra } from '../lib/main'
+import { registerChakra } from '../library/main'
 
 registerChakra({ appId: 'chakra-demo' })
 

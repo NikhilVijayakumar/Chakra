@@ -15,7 +15,7 @@
 
 ## 7.2 Reference consumer e2e (2026-11-05, Linux)
 - Consumer: `frontend/src/{main,preload,renderer}` (mounts `registerChakra`, preload bridge, `ChakraGate`; no DB/Sheets/credential code).
-- Stub-CLI path: covered by `src/lib/main/cliClient.test.ts` and `ChakraGate.test.tsx` (node stub scripts).
+- Stub-CLI path: covered by `src/library/main/cliClient.test.ts` and `ChakraGate.test.tsx` (node stub scripts).
 - Built-CLI path: `frontend/e2e/consumer.mjs` (Playwright Electron under xvfb) against `backend/dist/chakra` (onefile) with a cache seeded by `backend/tests/seed_demo.py`. Flow: splash/boot -> CLI config (verify, save) -> boot health/sync/app checks -> login -> "Hello Asha", features listed. Result: `E2E OK`.
 - Run: `python backend/tests/seed_demo.py <dir>`; `cd frontend && npx electron-vite build && xvfb-run -a node e2e/consumer.mjs <cli> <dir>`.
 

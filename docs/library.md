@@ -27,7 +27,7 @@ import { ChakraGate } from '@nikhilvijayakumar/chakra-ui'
 
 `ChakraGate` runs: splash -> locate CLI -> CLI health (`meta doctor`) -> synced content (offers manual sync) -> app enabled (from the sheet) -> login -> your app. The first run asks for the CLI path on the CLI configuration screen (`CliConfigScreen`, also exported for a settings page).
 
-Apps read data through `chakraCall('content.get', { content })`; the CLI returns only content permitted by the features the sheet grants that `appId`. See `frontend/src/lib/renderer/` for `SyncPanel` (sync status and manual sync).
+Apps read data through `chakraCall('content.get', { content })`; the CLI returns only content permitted by the features the sheet grants that `appId`. See `frontend/src/library/renderer/` for `SyncPanel` (sync status and manual sync).
 
 ## Extend or replace the defaults
 

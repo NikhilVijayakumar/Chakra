@@ -1,7 +1,7 @@
 import { CssBaseline, ThemeProvider, createTheme, Typography, Button } from '@mui/material'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { ChakraGate } from '../../lib'
+import { ChakraGate } from '../../library'
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>

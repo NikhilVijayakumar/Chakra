@@ -9,9 +9,9 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "outDir": "dist-lib",
-    "rootDir": "src/lib",
+    "rootDir": "src/library",
     "types": ["node"]
   },
-  "include": ["src/lib/**/*"],
-  "exclude": ["src/lib/**/*.test.ts", "src/lib/**/*.test.tsx"]
+  "include": ["src/library/**/*"],
+  "exclude": ["src/library/**/*.test.ts", "src/library/**/*.test.tsx"]
 }

@@ -1,3 +1,3 @@
-import { exposeChakra } from '../lib/preload'
+import { exposeChakra } from '../library/preload'
 
 exposeChakra()

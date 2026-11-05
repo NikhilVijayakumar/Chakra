@@ -1,5 +1,5 @@
 {
   "extends": "@electron-toolkit/tsconfig/tsconfig.web.json",
-  "include": ["src/renderer/src/**/*", "src/lib/renderer/**/*", "src/lib/index.ts", "src/lib/shared/**/*"],
+  "include": ["src/renderer/src/**/*", "src/library/renderer/**/*", "src/library/index.ts", "src/library/shared/**/*"],
   "compilerOptions": { "composite": true, "jsx": "react-jsx", "types": ["vite/client"] }
 }
