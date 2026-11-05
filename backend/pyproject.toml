@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "chakra-backend"
-version = "0.1.0"
+version = "0.2.0"
 description = "Python backend service for Chakra"
 requires-python = ">=3.12"
 dependencies = ["bcrypt>=4", "google-api-python-client>=2", "google-auth>=2"]
