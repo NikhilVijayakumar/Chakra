@@ -1,2 +1,3 @@
 - [Library and CLI split](library-and-cli-split.md) - UI library vs CLI responsibilities and the cache rules.
+- [Build artifacts](build-artifacts.md) - release vs dev outputs and where they go.
 - [Standalone consumers](standalone-consumers.md) - registered app identity and user access boundary.

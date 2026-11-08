@@ -8,10 +8,13 @@ Reusable base for desktop apps: **Chakra UI** (Electron library: splash, authent
 
 Build both parts for this machine (Windows, Linux, macOS) with one script. Outputs go to `dist/` and are never committed:
 ```bash
-python scripts/build.py                  # library tarball + CLI folder in ./dist
-python scripts/build.py --lib | --cli [--onefile] [--out DIR]
+python scripts/build.py                  # release: CLI folder + npm tarball (+ installer on Windows)
+python scripts/build.py --dev            # dev: CLI folder + frontend/dist-lib in place + run-ui launcher
+python scripts/build.py --lib | --cli [--onefile] [--out DIR] [--no-installer]
 ```
-Output folders come from `.env` (`CHAKRA_BUILD_DIR`, or `CHAKRA_BUILD_LIB_DIR` / `CHAKRA_BUILD_CLI_DIR`; see `.env.example`); a machine without those uses `./dist`. An app installs the tarball (`npm install dist/nikhilvijayakumar-chakra-ui-<version>.tgz`) and sets the CLI path in the library's configuration screen.
+A release writes `Chakra-CLI/` (with `chakra.cmd`), `Chakra-CLI-Setup-<version>.exe` on Windows, and `nikhilvijayakumar-chakra-ui-<version>.tgz`. `--dev` skips the installer and tarball and writes `run-ui.cmd`/`run-ui.sh` for the reference app. An app installs the tarball (`npm install dist/nikhilvijayakumar-chakra-ui-<version>.tgz`) and sets the CLI path in the library's configuration screen.
+
+Output folders come from `.env` (`CHAKRA_BUILD_DIR`, or `CHAKRA_BUILD_LIB_DIR` / `CHAKRA_BUILD_CLI_DIR`; `CHAKRA_DEV_DIR` for `--dev`; see `.env.example`); a machine without those uses `./dist`.
 
 ```bash
 cd backend && python -m venv .venv && .venv/bin/pip install -e .[dev] && .venv/bin/pytest

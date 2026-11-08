@@ -1,10 +1,10 @@
 # Implementation Tasks: chakra-hr-data-and-mula-integration
 
 - **OpenSpec Change ID:** `chakra-hr-data-and-mula-integration`
-- **Status:** Not Started
+- **Status:** In Progress
 - **Related artifacts:** `proposal.md`, `specs/`, `api-contract.md`, `design.md`, `adr.md`
 
-Ownership: sections 2-6 change only Chakra and must stay Mula-agnostic (no Mula names, ids, UI or defaults; behavior from `specs/`). Section 7 changes only Mula, using Chakra solely through the library. Use test-first where applicable. Do not mark tasks complete without verification evidence; record results in `verification.md`. Branch (Chakra): `feature/chakra-hr-data-and-mula-integration` from `develop`. Mula gets a matching branch from its `develop`; Mula changes need the owner's confirmation per Mula's `AGENTS.md` before section 7 starts. Windows verification is excluded (done separately).
+Ownership: sections 2-6 change only Chakra and must stay Mula-agnostic (no Mula names, ids, UI or defaults; behavior from `specs/`). Section 7 changes only Mula, using Chakra solely through the library. Use test-first where applicable. Do not mark tasks complete without verification evidence; record results in `verification.md`. Branch: Chakra work is on `develop`; Mula work is on `feat/prati-ui-components` (owner request). Windows verification is recorded in `verification.md`.
 
 ## 1. Preparation and Baseline
 - [x] 1.1 Answer the remaining open questions (default password, durability of cache). Decided already: tab names come from the sheet; permission is per app.
@@ -49,13 +49,15 @@ Ownership: sections 2-6 change only Chakra and must stay Mula-agnostic (no Mula 
 
 ## 7. Mula integration (needs owner confirmation first)
 **Traceability:** `specs/mula-integration`.
-- [ ] 7.1 Confirm scope and branch with the owner; create the Mula branch.
-- [ ] 7.2 Add the library dependency `file:../Chakra/frontend`; register it in main with `appId: 'APP008'` (the app's id in the sheet), load the preload bridge, wrap the renderer with `ChakraGate`; app boots through library screens with the CLI path configured.
+- [x] 7.1 Confirm scope and branch with the owner; create the Mula branch. Confirmed by the owner request; work continues on Mula's `feat/prati-ui-components` branch.
+- [x] 7.2 Add the library dependency (packed tarball in `libs/`); register it in main with `appId: 'APP008'` (the app's id in the sheet), load the preload bridge, wrap the renderer with `ChakraGate`; app boots through library screens with the CLI path configured.
 - [ ] 7.3 Add an adapter layer in the renderer that exposes Mula's existing repo interfaces over library calls (one module at a time: departments, designations, teams, holidays, leaves, attendance keys, configuration, employees, employee-teams); resolve names from returned content.
 - [ ] 7.4 Replace the quarantine screen's data source with the library operations.
 - [ ] 7.5 Remove Mula's database entirely (no schema, init, migrations or file) together with Mula's `mula:*` auth, sync, CRUD and quarantine IPC handlers, the SQLite/drizzle/Sheets/service-account/bcrypt code, the `google_auth` and data tables, and the dependencies; keep only Mula UI and its own features, with non-HR settings in the platform settings store.
-- [ ] 7.6 Mula `typecheck`, `lint`, `build` pass; dependency and import check shows none of the removed stack; `graphify update .` in both repos.
-- [ ] 7.7 Switch to the `npm pack` tarball dependency for the release build and confirm it installs and builds.
+- [ ] 7.6 Mula `typecheck`, `lint`, `build` pass; dependency and import check shows none of the removed stack; `graphify update .` in both repos. `typecheck` and `build` pass; the data stack remains until 7.3-7.5.
+- [x] 7.7 Switch to the `npm pack` tarball dependency for the release build and confirm it installs and builds.
+- [x] 7.8 Embed the library's CLI settings screen (`CliConfigScreen`) in Mula's Configuration page so the CLI path is set and verified there.
+- [x] 7.9 Remove Mula's boot screen and `mula:boot:*` IPC; the Chakra gate owns splash, CLI and database health, sync status and login. A single silent cache sync after login keeps Mula's module screens current until 7.3-7.5.
 
 ## 8. Integration and Verification
 - [ ] 8.1 Run all Chakra checks: backend pytest, frontend typecheck/lint/test/build, knowledge verify.
@@ -68,3 +70,9 @@ Ownership: sections 2-6 change only Chakra and must stay Mula-agnostic (no Mula 
 ## 9. Merge and Archive
 - [ ] 9.1 Merge the Chakra branch to `develop` (no PR, per owner preference) after gates; merge the Mula branch likewise with owner confirmation.
 - [ ] 9.2 Archive the change after the Windows verification is recorded.
+
+## 10. Build and distribution tooling
+**Traceability:** `specs/build-artifacts`.
+- [x] 10.1 Release build: `python scripts/build.py` produces `<out>/Chakra-CLI/` (executable, `_internal/`, `chakra.cmd`, `config/.env`, `build.json`), the Windows installer `Chakra-CLI-Setup-<version>.exe`, and the npm tarball; output folders come from `--out`, then `CHAKRA_BUILD_*` in `.env`.
+- [x] 10.2 Dev build: `python scripts/build.py --dev` produces the CLI folder and `frontend/dist-lib` in place, and writes `run-ui.cmd` / `run-ui.sh`; no installer or tarball.
+- [x] 10.3 Verify the release and dev outputs on Windows: `chakra.cmd meta version` returns 0.3.0 with `apiVersion` 2; the installer is built; Mula `typecheck` and `build` pass against the packaged library.

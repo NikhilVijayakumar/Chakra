@@ -4,7 +4,7 @@
 ## ADDED Requirements
 
 ### Requirement: Consume the library
-Mula SHALL depend on the Chakra library by relative path during development and by a packed tarball for releases, register the library in its main process with `appId` `APP008`, load the preload bridge, and render `ChakraGate` before its own screens.
+Mula SHALL depend on the Chakra library through the packed npm tarball kept in `libs/`, use its registered app identity through Chakra, load the preload bridge, and render `ChakraGate` before its own screens. Chakra SHALL check the user's direct or team-based access to that app.
 
 #### Scenario: Boot
 - **GIVEN** the CLI is configured and healthy
@@ -14,10 +14,10 @@ Mula SHALL depend on the Chakra library by relative path during development and 
 #### Scenario: CLI not configured
 - **GIVEN** no CLI path is saved
 - **WHEN** Mula starts
-- **THEN** the library CLI configuration screen is shown
+- **THEN** the library verifies and uses the bundled CLI, or shows CLI configuration if it is unavailable
 
 ### Requirement: Chakra only
-Mula SHALL integrate Chakra only: splash, boot, CLI connection, authentication (login, forgot password, OTP, reset) and all data come from the Chakra library and the installed Chakra CLI. Mula SHALL NOT bundle or install the CLI and SHALL NOT implement its own splash, login, CLI connection or data access.
+Mula SHALL integrate Chakra only: splash, boot, CLI connection, authentication (login, forgot password, OTP, reset) and all data come from the Chakra library and the installed Chakra CLI. Mula SHALL bundle a compatible CLI and SHALL NOT implement its own splash, login, CLI connection or data access.
 
 #### Scenario: Installed CLI
 - **GIVEN** the Chakra CLI (version with `apiVersion` 2) is installed on the machine
@@ -28,6 +28,19 @@ Mula SHALL integrate Chakra only: splash, boot, CLI connection, authentication (
 - **GIVEN** the installed CLI reports `apiVersion` 1
 - **WHEN** the path is verified
 - **THEN** the library reports it incompatible and asks for an upgrade
+
+#### Scenario: Startup checks
+- **GIVEN** Mula starts
+- **WHEN** the gate runs
+- **THEN** splash, CLI and database health, sync status and login are the library's, and Mula has no boot screen or boot IPC of its own
+
+### Requirement: Embed CLI settings
+Mula SHALL show the library's CLI configuration in its own settings screen, so the CLI path can be entered and verified there, and SHALL NOT keep a separate copy of that setting. The component surface and boundaries are recorded in [Chakra UI library surface](../../../../../../frontend/knowledge/concepts/library-surface.md) and [Library and CLI split](../../../../../../knowledge/concepts/library-and-cli-split.md).
+
+#### Scenario: Verify a new path
+- **GIVEN** Mula is past login
+- **WHEN** the user opens Configuration, enters a CLI path and saves it
+- **THEN** the library saves and verifies it, and the remaining screens use it without a restart
 
 ### Requirement: Use Chakra for data
 Every Mula module SHALL list, create, update and delete through library calls, and SHALL derive display names (department, designation, employee, team) from returned content.
