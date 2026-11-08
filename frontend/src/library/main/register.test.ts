@@ -1,14 +1,32 @@
 import { chmodSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { IPC, LONG_OPS } from '../shared/contract'
 import { registerChakra } from './register'
+
+/* Windows cannot execute extensionless shebang scripts. Run these test fixtures
+ * through Node while preserving the exact arguments, stdin and no-shell option. */
+vi.mock('node:child_process', async (load) => {
+  const real = await load<typeof import('node:child_process')>()
+  const fs = await import('node:fs')
+  return {
+    ...real,
+    spawn: (command: string, args: string[], options: Parameters<typeof real.spawn>[2]) => {
+      if (process.platform === 'win32' && fs.existsSync(command)) {
+        if (!options || typeof options === 'string' || options.shell !== false) throw new Error('fixture requires shell: false')
+        return real.spawn(process.execPath, [command, ...args], options)
+      }
+      return real.spawn(command, args, options)
+    }
+  }
+})
+
 
 const setup = () => {
   const dir = mkdtempSync(join(tmpdir(), 'chakra-reg-'))
   const cli = join(dir, 'cli')
-  writeFileSync(cli, `#!/usr/bin/env node\nlet i='';process.stdin.on('data',d=>i+=d);process.stdin.on('end',()=>{const a=process.argv.slice(2);if(a[1]==='version')console.log(JSON.stringify({ok:true,data:{version:'1',apiVersion:2}}));else if(a[1]==='doctor')console.log(JSON.stringify({ok:true,data:{checks:[]}}));else console.log(JSON.stringify({ok:true,data:{argv:a,body:JSON.parse(i||'{}')}}))})\n`)
+  writeFileSync(cli, `#!/usr/bin/env node\nlet i='';process.stdin.on('data',d=>i+=d);process.stdin.on('end',()=>{const a=process.argv.slice(2);if(a[1]==='version')console.log(JSON.stringify({ok:true,data:{version:'1',apiVersion:3}}));else if(a[1]==='doctor')console.log(JSON.stringify({ok:true,data:{checks:[]}}));else console.log(JSON.stringify({ok:true,data:{argv:a,body:JSON.parse(i||'{}')}}))})\n`)
   chmodSync(cli, 0o755)
   const h: Record<string, (e: unknown, ...a: any[]) => any> = {}
   registerChakra({ appId: 'my-app', configDir: dir, ipc: { handle: (c, f) => { h[c] = f } } })
@@ -41,7 +59,7 @@ describe('registerChakra', () => {
     const r = await h[IPC.call]({}, { op: 'content.get', payload: { appId: 'evil', content: 'holidays' } })
     expect(r.data.body).toEqual({ appId: 'my-app', content: 'holidays' })
     const login = await h[IPC.call]({}, { op: 'auth.login', payload: { email: 'a' } })
-    expect(login.data.body.appId).toBeUndefined()
+    expect(login.data.body.appId).toBe('my-app')
   })
   it('rejects operations outside the whitelist (including meta.*)', async () => {
     const { h, cli } = setup()

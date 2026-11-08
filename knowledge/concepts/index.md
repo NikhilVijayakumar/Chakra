@@ -1,1 +1,2 @@
 - [Library and CLI split](library-and-cli-split.md) - UI library vs CLI responsibilities and the cache rules.
+- [Standalone consumers](standalone-consumers.md) - registered app identity and user access boundary.

@@ -48,7 +48,8 @@ def test_employee_default_password_is_a_setting(synced):
     assert r["error"]["code"] == "validation_failed" and "password" in r["error"]["message"]
     synced.settings.set("default_password", "init-1")
     assert w(synced, "create", content="employees", record={"name": "N", "email": "n@x.com", "status": "active"})["ok"]
-    assert synced.call("auth", "login", {"email": "n@x.com", "password": "init-1"})["ok"]
+    synced._db.execute("INSERT INTO c_app_employees (employee_id, app_id, status) VALUES (?, ?, ?)", ("EMP003", "app1", "active"))
+    assert synced.call("auth", "login", {"email": "n@x.com", "password": "init-1", "appId": "app1"})["ok"]
 
 
 def test_update_delete_and_unknown(synced):

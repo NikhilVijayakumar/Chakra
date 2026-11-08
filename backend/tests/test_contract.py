@@ -5,7 +5,7 @@ from chakra_backend.cli import run
 
 def test_version(env):
     out = env.call("meta", "version")
-    assert out["data"]["apiVersion"] == 2 and out["data"]["version"]
+    assert out["data"]["apiVersion"] == 3 and out["data"]["version"]
 
 
 def test_malformed_json_is_invalid_request(env):

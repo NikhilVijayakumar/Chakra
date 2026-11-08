@@ -94,6 +94,7 @@ def test_pull_failure_after_push_keeps_previous_rows(synced):
 def test_cache_deleted_loses_only_unpushed_edits(synced, tmp_path):
     from chakra_backend import db as dbm
     edit(synced, name="Lost")
+    synced._db.close()
     (tmp_path / "c.sqlite").unlink()
     synced._db = dbm.connect(tmp_path / "c.sqlite", synced.registry)
     synced.call("sync", "run")

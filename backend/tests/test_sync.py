@@ -7,6 +7,7 @@ def test_status_never_synced(env):
 
 
 def test_sync_all_fails_partially_and_reports(env):
+    env.sheets.tabs.pop("Team")
     out = env.call("sync", "run")["data"]
     by = {r["target"]: r for r in out["results"]}
     assert by["employees"]["ok"] and by["holidays"]["ok"]

@@ -56,6 +56,7 @@ export const useLogin = (onLogin: (u: User) => void, strings: Strings = defaultS
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [accessDenied, setAccessDenied] = useState(false)
   const [attempts, setAttempts] = useState(0)
   const [lock, setLock] = useState(0)
   const timer = useRef<ReturnType<typeof setInterval> | undefined>(undefined)
@@ -67,6 +68,7 @@ export const useLogin = (onLogin: (u: User) => void, strings: Strings = defaultS
     const r = await call<{ user: User }>('auth.login', { email, password })
     setBusy(false); setPassword('')
     if (r.ok) return onLogin(r.data.user)
+    if (r.error.code === 'app_access_denied') { setAccessDenied(true); return }
     const n = attempts + 1
     if (r.error.code === 'invalid_credentials' && n >= MAX_ATTEMPTS) {
       setAttempts(0); setLock(LOCK_SECONDS)
@@ -74,7 +76,7 @@ export const useLogin = (onLogin: (u: User) => void, strings: Strings = defaultS
     } else setAttempts(n)
     setError(r.error.code === 'invalid_credentials' ? strings.invalidCredentials : messageFor(r.error.code))
   }
-  return { email, setEmail, password, setPassword, busy, error, lockSeconds: lock, submit }
+  return { email, setEmail, password, setPassword, busy, error, accessDenied, clearAccessDenied: () => setAccessDenied(false), lockSeconds: lock, submit }
 }
 
 export type ForgotStep = 'email' | 'otp' | 'password' | 'done'

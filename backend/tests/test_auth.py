@@ -1,5 +1,5 @@
 def login(env, email="asha@x.com", pw="secret"):
-    return env.call("auth", "login", {"email": email, "password": pw})
+    return env.call("auth", "login", {"email": email, "password": pw, "appId": "app1"})
 
 
 def test_login_ok_case_insensitive_email(synced):

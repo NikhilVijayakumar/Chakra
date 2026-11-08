@@ -7,7 +7,7 @@ import time
 
 import bcrypt
 
-from . import db as dbm
+from . import appfeatures, db as dbm
 from . import writes
 from .errors import ChakraError
 
@@ -46,12 +46,13 @@ def _active(ctx, emp: dict) -> bool:
 
 
 def login(ctx, req: dict) -> dict:
-    email, password = _need(req, "email", "password")
+    email, password, _ = _need(req, "email", "password", "appId")
     emp = _employee(ctx, email)
     a = ctx.registry.auth
     # same error for unknown email, inactive account and bad password
     if not emp or not _active(ctx, emp) or not _check(password, emp[a["password_hash"]]):
         raise ChakraError("invalid_credentials", "invalid email or password")
+    appfeatures.require_user_access(ctx, req, emp[a["id"]])
     return {"user": {"id": emp[a["id"]], "email": emp[a["email"]], "name": emp[a["name"]], "role": emp.get(a.get("role", "")) or None}}
 
 

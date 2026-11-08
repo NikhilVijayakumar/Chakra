@@ -7,6 +7,15 @@ import type { Strings } from './strings'
 /** Default login screen. Build your own with `useLogin`. */
 export const LoginScreen = ({ strings = defaultStrings, onLogin, onForgot }: { strings?: Strings; onLogin: (u: User) => void; onForgot: () => void }) => {
   const l = useLogin(onLogin, strings)
+  if (l.accessDenied) return (
+    <Box sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center', p: 3 }}>
+      <Stack spacing={2} sx={{ maxWidth: 360 }}>
+        <Typography component="h1" variant="h5">{strings.noAccessTitle}</Typography>
+        <Typography>{strings.noAccessMessage}</Typography>
+        <Button onClick={l.clearAccessDenied}>{strings.back}</Button>
+      </Stack>
+    </Box>
+  )
   return (
     <Box sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center', p: 3 }} data-testid="login">
       <Stack component="form" spacing={2} sx={{ width: 360 }} onSubmit={(e) => { e.preventDefault(); void l.submit() }}>

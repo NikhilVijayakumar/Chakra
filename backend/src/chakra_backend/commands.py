@@ -5,7 +5,7 @@ from . import __version__, appfeatures, auth, quarantine, sheets, sync, writes
 from .errors import ChakraError
 from .settings import KEYS, SECRET_KEYS
 
-API_VERSION = 2
+API_VERSION = 3
 
 
 def version(ctx, req):

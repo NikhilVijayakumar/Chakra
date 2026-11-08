@@ -1,5 +1,7 @@
 # Design: chakra-hr-data-and-mula-integration
 
+**Standalone update:** The `chakra-standalone-consumer` change supersedes this document's Mūla-specific app-ID and external-only CLI assumptions. Scoped Chakra consumers retain the app-ID checks described below; Mūla bundles a compatible CLI, and Chakra must enforce whether the authenticated user has access to the registered app directly or through a team; the identity-free authorization bypass has been withdrawn. Historical evidence and completed task records remain unchanged.
+
 ## 1. Overview
 
 ### Purpose

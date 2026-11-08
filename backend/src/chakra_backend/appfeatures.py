@@ -52,3 +52,36 @@ def content_get(ctx, req: dict) -> dict:
     if where is not None and not isinstance(where, dict):
         raise ChakraError("invalid_request", "where must be an object")
     return {"rows": dbm.effective_rows(ctx.db, content, where, hide=True)}
+
+
+def require_user_access(ctx, req: dict, employee_id: str) -> None:
+    """Check sheet-backed direct and team grants after authentication."""
+    (app_id,) = _need(req, "appId")
+    info(ctx, {"appId": app_id})
+    metadata = {r["content"]: r for r in ctx.db.execute("SELECT * FROM sync_meta")}
+
+    def synced(*contents):
+        return all(cid in metadata and metadata[cid]["synced_at"] for cid in contents)
+
+    if not synced("apps", "employees"):
+        raise ChakraError("not_synced", "app access data has not been synchronized")
+
+    def active(row):
+        return str(row.get("status", "")).strip().lower() == "active"
+
+    def rows(content):
+        return dbm.effective_rows(ctx.db, ctx.registry.get(content))
+
+    direct_ready = synced("app_employees")
+    team_ready = synced("app_teams", "employee_teams", "teams")
+    if direct_ready and any(active(r) and r["employee_id"] == employee_id and r["app_id"] == app_id for r in rows("app_employees")):
+        return
+    if team_ready:
+        teams = {r["id"] for r in rows("teams") if active(r)}
+        member = {r["team_id"] for r in rows("employee_teams") if active(r) and r["employee_id"] == employee_id}
+        granted = {r["team_id"] for r in rows("app_teams") if active(r) and r["app_id"] == app_id}
+        if teams & member & granted:
+            return
+    if not direct_ready or not team_ready:
+        raise ChakraError("not_synced", "app access data has not been synchronized")
+    raise ChakraError("app_access_denied", "You do not have access to this app. Contact your administrator.")

@@ -15,6 +15,8 @@ export const defaultStrings = {
   retry: 'Retry',
   configureCli: 'Configure CLI',
   loginTitle: 'Sign in',
+  noAccessTitle: 'No access',
+  noAccessMessage: 'You do not have access to this app. Please contact your administrator.',
   email: 'Email',
   password: 'Password',
   signIn: 'Sign in',

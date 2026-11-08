@@ -1,6 +1,6 @@
 {
   "name": "@nikhilvijayakumar/chakra-ui",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Chakra UI: splash, authentication and CLI configuration for Electron apps, backed by the Chakra CLI",
   "main": "./out/main/index.js",
   "author": "Nikhil V",

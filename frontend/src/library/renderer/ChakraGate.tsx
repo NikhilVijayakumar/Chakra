@@ -85,7 +85,11 @@ export const ChakraGate = ({ children, strings: over, splashLetters, skipSplash,
     mark('sync', 'running')
     const st = await call<SyncStatus>('sync.status')
     if (!st.ok) { mark('sync', 'error'); return setError(messageFor(st.error.code)) }
-    if (!st.data.synced) { mark('sync', 'error', 'not synced'); return setPhase('sync') }
+    const cachedContent = (id: string): boolean => st.data.contents.some((c) =>
+      c.id === id && typeof c.lastSyncAt === 'number' && c.lastSyncAt > 0)
+    const cached = cachedContent('apps') && cachedContent('employees') &&
+      (cachedContent('app_employees') || ['app_teams', 'employee_teams', 'teams'].every(cachedContent))
+    if (!st.data.synced && !cached) { mark('sync', 'error', 'not synced'); return setPhase('sync') }
     mark('sync', 'ok')
 
     mark('app', 'running')

@@ -1,5 +1,5 @@
 // Contract between Chakra UI and the `chakra` CLI. Mirrors planning/.../api-contract.md.
-export const SUPPORTED_API_VERSION = 2
+export const SUPPORTED_API_VERSION = 3
 
 export interface Ok<T> {
   ok: true
@@ -105,7 +105,7 @@ export const OPS = {
 } as const
 export type Op = keyof typeof OPS
 export const APP_SCOPED: ReadonlySet<Op> = new Set<Op>(
-  (Object.keys(OPS) as Op[]).filter((o) => o.startsWith('content.') || o.startsWith('quarantine.') || o.startsWith('app.'))
+  (Object.keys(OPS) as Op[]).filter((o) => o === 'auth.login' || o.startsWith('content.') || o.startsWith('quarantine.') || o.startsWith('app.'))
 )
 export const LONG_OPS: ReadonlySet<Op> = new Set<Op>(['sync.run', 'quarantine.scan'])
 

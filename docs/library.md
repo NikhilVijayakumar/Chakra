@@ -14,7 +14,7 @@ your app (Electron) ──► Chakra UI ──► chakra CLI ──► SQLite ca
 ```ts
 // main
 import { registerChakra } from '@nikhilvijayakumar/chakra-ui/main'
-registerChakra({ appId: 'my-app' })
+registerChakra({ appId: 'my-app', defaultCliPath: '/path/to/bundled/chakra' })
 
 // preload
 import { exposeChakra } from '@nikhilvijayakumar/chakra-ui/preload'
@@ -25,7 +25,9 @@ import { ChakraGate } from '@nikhilvijayakumar/chakra-ui'
 <ChakraGate>{({ user, app, logout }) => <MyApp user={user} features={app.features} />}</ChakraGate>
 ```
 
-`ChakraGate` runs: splash -> locate CLI -> CLI health (`meta doctor`) -> synced content (offers manual sync) -> app enabled (from the sheet) -> login -> your app. The first run asks for the CLI path on the CLI configuration screen (`CliConfigScreen`, also exported for a settings page).
+`ChakraGate` runs: splash -> locate CLI -> CLI health (`meta doctor`) -> synced content (offers manual sync) -> app enabled (from the sheet) -> login -> your app. The host may supply `defaultCliPath` to use a verified bundled executable on first run; a saved selection takes precedence. If neither works, the CLI configuration screen (`CliConfigScreen`, also exported for settings) offers selection and verification.
+
+After valid credentials, Chakra checks direct or team-based membership in the registered app. A denied user sees the shared no-access screen. Previously synchronized permissions remain usable after a later refresh failure; never-synchronized membership data is rejected. This is an app-level gate, not protection from an OS user who can invoke the CLI directly.
 
 Apps read data through `chakraCall('content.get', { content })`; the CLI returns only content permitted by the features the sheet grants that `appId`. See `frontend/src/library/renderer/` for `SyncPanel` (sync status and manual sync).
 
@@ -63,4 +65,4 @@ Edits are stored locally and pushed to the sheet at the next sync (`useSync().ru
 
 Writable contents, ids and required fields are data in `contents.json`. Set `default_password` with `chakra config set` if new employees may be created without a password.
 
-The contract (CLI `apiVersion` 2) is in `planning/openspec/changes/chakra-hr-data-and-mula-integration/api-contract.md`, extending `chakra-shared-library/api-contract.md`. A library at 0.3.0 needs the 0.3.0 CLI; an older CLI is reported as incompatible.
+The app-aware login contract uses CLI `apiVersion` 3. Chakra UI 0.4.0 and CLI 0.4.0 must be upgraded together; API version 2 CLIs are reported as incompatible.

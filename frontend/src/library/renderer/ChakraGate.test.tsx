@@ -13,8 +13,8 @@ const install = (o: { cliPath?: string | null; verify?: Envelope<any>; calls?: R
   const api = {
     cli: {
       get: vi.fn(async () => ({ cliPath: o.cliPath === undefined ? '/bin/chakra' : o.cliPath, version: null, verifiedAt: null })),
-      verify: vi.fn(async () => o.verify ?? ok({ version: '1', apiVersion: 2, checks: [], healthy: true })),
-      status: vi.fn(async () => o.verify ?? ok({ version: '1', apiVersion: 2, checks: [], healthy: true })),
+      verify: vi.fn(async () => o.verify ?? ok({ version: '1', apiVersion: 3, checks: [], healthy: true })),
+      status: vi.fn(async () => o.verify ?? ok({ version: '1', apiVersion: 3, checks: [], healthy: true })),
       save: vi.fn()
     },
     call: vi.fn(async (op: string, p: any) => (calls[op] ? calls[op](p) : err('invalid_request')))
@@ -40,7 +40,7 @@ describe('ChakraGate boot', () => {
   })
 
   it('shows the failing doctor check and never reaches login', async () => {
-    install({ verify: ok({ version: '1', apiVersion: 2, healthy: false, checks: [{ id: 'google_credentials', ok: false, message: 'no key' }] }) })
+    install({ verify: ok({ version: '1', apiVersion: 3, healthy: false, checks: [{ id: 'google_credentials', ok: false, message: 'no key' }] }) })
     gate()
     expect(await screen.findByText(/google_credentials: no key/)).toBeTruthy()
     expect(screen.queryByTestId('login')).toBeNull()
@@ -50,6 +50,13 @@ describe('ChakraGate boot', () => {
     install({ calls: { 'sync.status': () => ok({ ...synced, synced: false }) } })
     gate()
     expect(await screen.findByTestId('sync-panel')).toBeTruthy()
+  })
+
+  it('allows login with a previously synced direct access path after a refresh fails', async () => {
+    install({ calls: { ...healthyCalls, 'sync.status': () => ok({ ...synced, synced: false, contents: [...['apps', 'employees', 'app_employees'].map((id) => ({ id, synced: false, lastSyncAt: 1, error: 'offline' })), { id: 'other', synced: false, lastSyncAt: null, error: 'offline' }] }) } })
+    gate()
+    expect(await screen.findByLabelText('Email')).toBeTruthy()
+    expect(screen.queryByTestId('sync-panel')).toBeNull()
   })
 
   it('blocks an app that is not enabled with a mapped message, not the raw CLI text', async () => {
@@ -72,6 +79,19 @@ describe('ChakraGate boot', () => {
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'secret' } })
     fireEvent.click(screen.getByRole('button', { name: 'Sign in' }))
     await waitFor(() => expect(screen.getByText('home for Asha')).toBeTruthy())
+  })
+
+  it('shows shared no-access guidance after valid credentials are denied', async () => {
+    install({ calls: { ...healthyCalls, 'auth.login': () => err('app_access_denied') } })
+    gate()
+    fireEvent.change(await screen.findByLabelText('Email'), { target: { value: 'a@b.c' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'secret' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }))
+    expect(await screen.findByRole('heading', { name: 'No access' })).toBeTruthy()
+    expect(screen.getByText(/contact your administrator/i)).toBeTruthy()
+    expect(screen.queryByText(/home for/i)).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }))
+    expect(await screen.findByLabelText('Email')).toBeTruthy()
   })
 
   it('locks the form after three failed attempts', async () => {

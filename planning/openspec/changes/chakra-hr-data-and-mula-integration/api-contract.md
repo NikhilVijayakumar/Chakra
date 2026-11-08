@@ -1,5 +1,7 @@
 # Interface and Data Contract: chakra-hr-data-and-mula-integration
 
+**Standalone update:** The `chakra-standalone-consumer` change supersedes this document's Mūla-specific app-ID and external-only CLI assumptions. Scoped Chakra consumers retain the app-ID checks described below; Mūla bundles a compatible CLI, and Chakra must enforce whether the authenticated user has access to the registered app directly or through a team; the identity-free authorization bypass has been withdrawn. Historical evidence and completed task records remain unchanged.
+
 Extends `chakra-shared-library/api-contract.md`. Unchanged: invocation (`<cli> <group> <command>`, JSON on stdin, one envelope on stdout), the envelope, and all existing operations. Changes: `apiVersion` is **2**, new operations, new error codes, extended `sync run`/`sync status`/`content get`.
 
 Knowledge: [CLI contract](../../../../backend/knowledge/concepts/cli-contract.md), [library surface](../../../../frontend/knowledge/concepts/library-surface.md).
